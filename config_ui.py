@@ -1,4 +1,5 @@
 import http.server
+import fcntl
 import json
 import os
 import pathlib
@@ -82,11 +83,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       </select>
       <select id="profileSelect" onchange="renderProfile()"></select>
       <select id="templateSelect" onchange="applyTemplate()">
-        <option value="" id="optTplDefault">+ Preset...</option>
-        <option value="pcsx2">PCSX2 / PS2</option>
-        <option value="dolphin">Dolphin / GameCube</option>
-        <option value="hollow">Hollow Knight / 2D</option>
-      </select>
+          <option value="">+ Preset Pronto...</option>
+          <option value="pcsx2">PCSX2 (PS2)</option>
+          <option value="dolphin">Dolphin (GC / Wii)</option>
+          <option value="retroarch">RetroArch (SNES / GBA)</option>
+          <option value="ppsspp">PPSSPP (PSP)</option>
+          <option value="hollow_knight">Hollow Knight / 2D</option>
+          <option value="minecraft_mac">Minecraft (macOS)</option>
+          <option value="desktop_media">Desktop & Media (macOS)</option>
+          <option value="dj_control">DJ / Audio Control</option>
+        </select>
       <button id="btnNew" onclick="createProfile()">+ Novo</button>
       <button id="btnExport" onclick="exportProfile()">Exportar</button>
       <button id="btnImport" onclick="document.getElementById('importFile').click()">Importar</button>
@@ -314,23 +320,54 @@ const I18N = {
 const PRESETS = {
   pcsx2: {
     right_stick_mode: "keys", deadzone: 9000, trigger_threshold: 200, shift_button: "SHARE",
-    buttons: { A:"k", B:"l", X:"j", Y:"i", MENU:"enter", VIEW:"z", SHARE:"", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"q", RB:"e", L3:"2", R3:"4", LT:"1", RT:"3" },
-    shift_buttons: { LB:"f3", RB:"f1", UP:"tab", ESC:"esc" },
-    left_stick: { up:"w", down:"s", left:"a", right:"d" },
-    right_stick: { up:"t", down:"g", left:"f", right:"h" }
+    buttons: { A:"k", B:"l", X:"j", Y:"i", MENU:"enter", VIEW:"z", SHARE:"", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"q", RB:"e", LT:"1", RT:"3", LS:"2", RS:"4" },
+    shift_buttons: { A:"f1", B:"f3", X:"tab", Y:"esc", LB:"f2", RB:"f4" },
+    right_stick_keys: { UP:"w", DOWN:"s", LEFT:"a", RIGHT:"d" }
   },
   dolphin: {
-    right_stick_mode: "keys", deadzone: 9500, trigger_threshold: 200, shift_button: "SHARE",
-    buttons: { A:"x", B:"z", X:"c", Y:"s", MENU:"enter", VIEW:"tab", SHARE:"", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"q", RB:"e", L3:"1", R3:"2", LT:"l", RT:"r" },
-    shift_buttons: { LB:"f2", RB:"f1" },
-    left_stick: { up:"w", down:"s", left:"a", right:"d" },
-    right_stick: { up:"i", down:"k", left:"j", right:"l" }
+    right_stick_mode: "keys", deadzone: 9000, trigger_threshold: 200, shift_button: "SHARE",
+    buttons: { A:"x", B:"z", X:"c", Y:"s", MENU:"enter", VIEW:"tab", SHARE:"", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"q", RB:"w", LT:"a", RT:"d", LS:"1", RS:"2" },
+    shift_buttons: { A:"f1", B:"f2", X:"tab", Y:"esc" },
+    right_stick_keys: { UP:"i", DOWN:"k", LEFT:"j", RIGHT:"l" }
   },
-  hollow: {
-    right_stick_mode: "keys", deadzone: 10000, trigger_threshold: 200,
-    buttons: { A:"z", B:"x", X:"c", Y:"a", MENU:"esc", VIEW:"tab", SHARE:"f12", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"q", RB:"f", L3:"s", R3:"d", LT:"shift", RT:"space" },
-    left_stick: { up:"up", down:"down", left:"left", right:"right" },
-    right_stick: { up:"up", down:"down", left:"left", right:"right" }
+  retroarch: {
+    right_stick_mode: "keys", deadzone: 9500, trigger_threshold: 250, shift_button: "SHARE",
+    buttons: { A:"x", B:"z", X:"s", Y:"a", MENU:"enter", VIEW:"rshift", SHARE:"", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"q", RB:"w", LT:"1", RT:"2", LS:"f1", RS:"space" },
+    shift_buttons: { A:"f2", B:"f4", X:"space", Y:"backspace", MENU:"f1" },
+    right_stick_keys: { UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right" }
+  },
+  ppsspp: {
+    right_stick_mode: "keys", deadzone: 9000, trigger_threshold: 200, shift_button: "SHARE",
+    buttons: { A:"x", B:"z", X:"s", Y:"a", MENU:"enter", VIEW:"space", SHARE:"", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"q", RB:"w", LT:"1", RT:"2", LS:"tab", RS:"esc" },
+    shift_buttons: { A:"f2", B:"f4", X:"tab", Y:"esc" },
+    right_stick_keys: { UP:"i", DOWN:"k", LEFT:"j", RIGHT:"l" }
+  },
+  hollow_knight: {
+    right_stick_mode: "keys", deadzone: 8500, trigger_threshold: 200, shift_button: "SHARE",
+    buttons: { A:"z", B:"x", X:"c", Y:"a", MENU:"esc", VIEW:"tab", SHARE:"", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"q", RB:"s", LT:"f", RT:"d", LS:"m", RS:"i" },
+    shift_buttons: { A:"enter", B:"esc", VIEW:"m" },
+    right_stick_keys: { UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right" }
+  },
+  minecraft_mac: {
+    right_stick_mode: "mouse", deadzone: 8000, trigger_threshold: 180, shift_button: "SHARE",
+    mouse_speed: 18, scroll_speed: 12,
+    buttons: { A:"space", B:"q", X:"e", Y:"f", MENU:"esc", VIEW:"tab", SHARE:"", UP:"f5", DOWN:"t", LEFT:"1", RIGHT:"2", LB:"mouse_left", RB:"mouse_right", LT:"lshift", RT:"lctrl", LS:"lctrl", RS:"f3" },
+    shift_buttons: { A:"enter", B:"cmd+q", X:"3", Y:"4" },
+    left_stick_keys: { UP:"w", DOWN:"s", LEFT:"a", RIGHT:"d" }
+  },
+  desktop_media: {
+    right_stick_mode: "mouse", deadzone: 8000, trigger_threshold: 200, shift_button: "SHARE",
+    mouse_speed: 16, scroll_speed: 14,
+    buttons: { A:"enter", B:"esc", X:"space", Y:"cmd+w", MENU:"cmd+tab", VIEW:"ctrl+up", SHARE:"", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"scroll_mod", RB:"mouse_left", LT:"mouse_right", RT:"cmd+l", LS:"cmd+c", RS:"cmd+v" },
+    shift_buttons: { A:"f11", B:"cmd+q", X:"cmd+shift+3", Y:"cmd+t", LEFT:"cmd+[", RIGHT:"cmd+]" },
+    left_stick_keys: { UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right" }
+  },
+  dj_control: {
+    right_stick_mode: "mouse", deadzone: 8500, trigger_threshold: 180, shift_button: "SHARE",
+    mouse_speed: 14, scroll_speed: 16,
+    buttons: { A:"space", B:"c", X:"s", Y:"l", MENU:"enter", VIEW:"tab", SHARE:"", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"scroll_mod", RB:"mouse_left", LT:"q", RT:"w", LS:"1", RS:"2" },
+    shift_buttons: { A:"b", B:"r", X:"i", Y:"o" },
+    left_stick_keys: { UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right" }
   }
 };
 
@@ -626,13 +663,16 @@ function collectCurrentProfile() {
 function applyTemplate() {
   const sel = document.getElementById("templateSelect");
   const key = sel.value;
-  sel.value = "";
   if (!key || !PRESETS[key]) return;
-  const name = prompt(t("promptNew"), key);
-  if (!name || !name.trim()) return;
-  const clean = name.trim();
-  cfg.profiles[clean] = JSON.parse(JSON.stringify(PRESETS[key]));
-  cfg.active_profile = clean;
+  const current = document.getElementById("profileSelect").value || cfg.active_profile;
+  if (!current) return;
+  const existingApps = (cfg.profiles[current] && cfg.profiles[current].apps) || [];
+  const presetData = JSON.parse(JSON.stringify(PRESETS[key]));
+  if (existingApps.length && (!presetData.apps || !presetData.apps.length)) {
+    presetData.apps = existingApps;
+  }
+  cfg.profiles[current] = presetData;
+  cfg.active_profile = current;
   populateSelect();
   renderProfile();
 }
