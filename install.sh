@@ -13,6 +13,7 @@ echo "Criando bundle nativo em $APP_DIR..."
 rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 [ -f "$PROJECT_DIR/AppIcon.icns" ] && cp "$PROJECT_DIR/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
+ln -sf "$PYTHON_BIN" "$APP_DIR/Contents/MacOS/python_bin"
 
 cat << INFO > "$APP_DIR/Contents/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>
@@ -28,7 +29,7 @@ cat << INFO > "$APP_DIR/Contents/Info.plist"
     <key>CFBundleName</key>
     <string>GameSir Bridge</string>
     <key>CFBundleVersion</key>
-    <string>5.0.0</string>
+    <string>5.1.0</string>
     <key>LSUIElement</key>
     <false/>
 </dict>
@@ -39,13 +40,13 @@ cat << EXEC > "$APP_DIR/Contents/MacOS/GameSir Bridge"
 #!/bin/bash
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 cd "$PROJECT_DIR"
-exec "$PYTHON_BIN" -u "$PROJECT_DIR/menubar_app.py" >> /tmp/gamesir_bridge.log 2>&1
+exec "$APP_DIR/Contents/MacOS/python_bin" -u "$PROJECT_DIR/menubar_app.py" >> /tmp/gamesir_bridge.log 2>&1
 EXEC
 
 chmod +x "$APP_DIR/Contents/MacOS/GameSir Bridge"
 codesign --force --deep --sign - "$APP_DIR"
 
-echo "Configurando gatilho USB plug-and-play (IOKit LaunchAgent)..."
+echo "Configurando inicialização automática em segundo plano (LaunchAgent)..."
 mkdir -p "$HOME/Library/LaunchAgents"
 cat << PLIST > "$PLIST_PATH"
 <?xml version="1.0" encoding="UTF-8"?>
@@ -60,26 +61,14 @@ cat << PLIST > "$PLIST_PATH"
         <string>-a</string>
         <string>$APP_DIR</string>
     </array>
-    <key>LaunchEvents</key>
-    <dict>
-        <key>com.apple.iokit.matching</key>
-        <dict>
-            <key>GameSirG7SE</key>
-            <dict>
-                <key>idVendor</key>
-                <integer>13623</integer>
-                <key>idProduct</key>
-                <integer>4112</integer>
-                <key>IOProviderClass</key>
-                <string>IOUSBHostDevice</string>
-                <key>IOMatchLaunchStream</key>
-                <true/>
-            </dict>
-        </dict>
-    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
 </plist>
 PLIST
 
 launchctl bootout "gui/$(id -u)" "$PLIST_PATH" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST_PATH"
-echo "Instalação concluída! Lembre-se de autorizar GameSir Bridge e Python em Privacidade e Segurança > Controle do Dispositivo e Acesso a Dados."
+
+echo "Instalação concluída! Abrindo GameSir Bridge..."
+open -a "$APP_DIR"
