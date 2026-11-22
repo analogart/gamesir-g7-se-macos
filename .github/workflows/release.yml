@@ -1,0 +1,44 @@
+name: Build and Release macOS App
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-14
+            arch: arm64
+          - os: macos-13
+            arch: x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install libusb
+        run: brew install libusb
+
+      - name: Build standalone .app and .zip
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          sed -i '' "s/v6\.1\.0/${VERSION}/g" build_standalone.sh
+          sed -i '' "s/6\.1\.0/${VERSION#v}/g" build_standalone.sh
+          chmod +x build_standalone.sh
+          ./build_standalone.sh
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true
