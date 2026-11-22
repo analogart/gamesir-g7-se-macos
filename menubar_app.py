@@ -3,6 +3,7 @@ import json
 import locale
 import os
 import pathlib
+import signal
 import subprocess
 import sys
 import threading
@@ -165,6 +166,7 @@ class ControlPanel(NSObject):
         self.ctrl = ctrl
         self.win = None
         self.status_lbl = None
+        self.profile_buttons = {}
         return self
 
     def windowShouldClose_(self, sender):
@@ -183,7 +185,7 @@ class ControlPanel(NSObject):
             self.show()
 
     @objc.python_method
-    def update_status_label(self):
+    def sync_ui(self):
         if self.status_lbl is not None:
             st_text = (
                 f"●  {self.ctrl.t('connected').format(self.ctrl.last_device)}"
@@ -191,6 +193,9 @@ class ControlPanel(NSObject):
                 else f"○  {self.ctrl.t('searching')}"
             )
             self.status_lbl.setStringValue_(st_text)
+        for prof_name, btn in self.profile_buttons.items():
+            active = prof_name == self.ctrl.bridge.current_profile
+            btn.setTitle_(f"✓   {prof_name}" if active else prof_name)
 
     @objc.python_method
     def show(self):
@@ -216,7 +221,7 @@ class ControlPanel(NSObject):
             NSBackingStoreBuffered,
             False,
         )
-        win.setTitle_("GameSir Bridge")
+        win.setTitle_("GameSir Bridge v5.2")
         win.setReleasedWhenClosed_(False)
         win.setDelegate_(self)
         content = win.contentView()
@@ -231,20 +236,20 @@ class ControlPanel(NSObject):
         self.status_lbl.setFont_(NSFont.boldSystemFontOfSize_(14.0))
         self.status_lbl.setAlignment_(NSTextAlignmentCenter)
         content.addSubview_(self.status_lbl)
-        self.update_status_label()
 
+        self.profile_buttons = {}
         cur_y = h - 90
         for prof_name in profiles:
-            active = prof_name == self.ctrl.bridge.current_profile
-            prefix = "✓   " if active else ""
             btn = NSButton.alloc().initWithFrame_(NSMakeRect(30, cur_y, w - 60, 32))
-            btn.setTitle_(f"{prefix}{prof_name}")
             btn.setBezelStyle_(NSBezelStyleRounded)
             btn.setTarget_(self)
             btn.setAction_("selectProf:")
             btn.setIdentifier_(prof_name)
             content.addSubview_(btn)
+            self.profile_buttons[prof_name] = btn
             cur_y -= 38
+
+        self.sync_ui()
 
         cur_y -= 10
         for title, sel in [
@@ -292,7 +297,7 @@ class ControlPanel(NSObject):
 
     def selectProf_(self, sender):
         self.ctrl.bridge.set_profile(sender.identifier(), vibrate=True, show_osd=True)
-        self.show()
+        self.sync_ui()
 
     def selectLang_(self, sender):
         self.ctrl.set_language(sender.identifier())
@@ -361,6 +366,13 @@ class GameSirAppDelegate(NSObject):
             self._timer.invalidate()
         except Exception:
             pass
+        pid_file = pathlib.Path(__file__).parent / ".config_ui.pid"
+        if pid_file.exists():
+            try:
+                os.kill(int(pid_file.read_text().strip()), signal.SIGTERM)
+                pid_file.unlink(missing_ok=True)
+            except Exception:
+                pass
 
     @objc.python_method
     def t(self, key):
@@ -461,7 +473,13 @@ class GameSirAppDelegate(NSObject):
         if st is not None:
             dev, _ = st
             self.last_device = dev
-            self.panel.update_status_label()
+            if len(self.panel.profile_buttons) != len(
+                self.bridge.cfg.get("profiles", {})
+            ):
+                if self.panel.is_visible():
+                    self.panel.show()
+            else:
+                self.panel.sync_ui()
 
         if osd is not None:
             self.osd.show(self.t("osd_profile").format(osd.upper()))

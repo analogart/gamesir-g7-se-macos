@@ -1,4 +1,4 @@
-import json, math, pathlib, struct, sys, time, usb.core, usb.util
+import json, math, os, pathlib, struct, sys, time, usb.core, usb.util
 from pynput.keyboard import Controller as KbController, Key
 from pynput.mouse import Controller as MouseController, Button
 
@@ -6,6 +6,8 @@ try:
     from AppKit import NSWorkspace
 except ImportError:
     NSWorkspace = None
+
+LIVE_STATE_PATH = "/tmp/gamesir_live.json"
 
 SUPPORTED_DEVICES = [
     (0x3537, 0x1010, "GameSir G7 SE"),
@@ -74,6 +76,7 @@ class GameSirBridge:
     ):
         self.config_path = pathlib.Path(__file__).parent / "profiles.json"
         self._last_mtime = 0.0
+        self._last_live_write = 0.0
         self.reload_config(initial_profile)
         self.on_status = on_status
         self.on_profile_osd = on_profile_osd
@@ -168,6 +171,31 @@ class GameSirBridge:
         time.sleep(0.04)
         for k in reversed(keys):
             self.kb.release(k)
+
+    def _write_live_state(self, held_list, lx, ly, rx, ry, lt, rt):
+        now = time.time()
+        if now - self._last_live_write < 0.08:
+            return
+        self._last_live_write = now
+        try:
+            payload = {
+                "connected": self.connected_name,
+                "profile": self.current_profile,
+                "held": held_list,
+                "lx": lx,
+                "ly": ly,
+                "rx": rx,
+                "ry": ry,
+                "lt": lt,
+                "rt": rt,
+                "ts": now,
+            }
+            tmp_path = f"{LIVE_STATE_PATH}.tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f)
+            os.replace(tmp_path, LIVE_STATE_PATH)
+        except Exception:
+            pass
 
     def _connect(self):
         for vid, pid, name in SUPPORTED_DEVICES:
@@ -278,6 +306,7 @@ class GameSirBridge:
             dev, ep_in = self._connect()
             if dev is None:
                 self.connected_name = self.ep_out = None
+                self._write_live_state([], 0, 0, 0, 0, 0, 0)
                 if self.on_status:
                     self.on_status(None, self.current_profile)
                 time.sleep(1.5)
@@ -319,16 +348,49 @@ class GameSirBridge:
                         pass
             except usb.core.USBError:
                 self.release_all()
-                time.sleep(1)
+                time.sleep(1.0)
+            finally:
+                try:
+                    usb.util.release_interface(dev, 0)
+                except Exception:
+                    pass
+                try:
+                    usb.util.dispose_resources(dev)
+                except Exception:
+                    pass
+                self.ep_out = None
         self.release_all()
 
     def _process_packet(self, data):
         prof = self.cfg["profiles"][self.current_profile]
         btns = prof["buttons"]
         deadzone = prof.get("deadzone", self.cfg.get("deadzone", 10000))
+        trig_thresh = prof.get(
+            "trigger_threshold", self.cfg.get("trigger_threshold", 200)
+        )
         held = {
             name for name, (idx, mask) in BIT_MAP.items() if bool(data[idx] & mask)
         }
+        lx, ly = (
+            struct.unpack("<h", bytes(data[10:12]))[0],
+            struct.unpack("<h", bytes(data[12:14]))[0],
+        )
+        rx, ry = (
+            struct.unpack("<h", bytes(data[14:16]))[0],
+            struct.unpack("<h", bytes(data[16:18]))[0],
+        )
+        lt, rt = (
+            struct.unpack("<H", bytes(data[6:8]))[0],
+            struct.unpack("<H", bytes(data[8:10]))[0],
+        )
+
+        live_held = sorted(held)
+        if lt > trig_thresh:
+            live_held.append("LT")
+        if rt > trig_thresh:
+            live_held.append("RT")
+        self._write_live_state(live_held, lx, ly, rx, ry, lt, rt)
+
         self.suppressed_buttons.intersection_update(held)
 
         if "VIEW" in held and "UP" in held:
@@ -368,10 +430,6 @@ class GameSirBridge:
         if triggered:
             return
 
-        rx, ry = (
-            struct.unpack("<h", bytes(data[14:16]))[0],
-            struct.unpack("<h", bytes(data[16:18]))[0],
-        )
         is_mouse = prof.get("right_stick_mode") == "mouse"
         if is_mouse and ("LB" in held) and (math.hypot(rx, ry) > deadzone):
             self.suppressed_buttons.add("LB")
@@ -380,19 +438,11 @@ class GameSirBridge:
                 btns.get(name),
                 (name in held) and (name not in self.suppressed_buttons),
             )
-        lt, rt = (
-            struct.unpack("<H", bytes(data[6:8]))[0],
-            struct.unpack("<H", bytes(data[8:10]))[0],
-        )
-        self._set_input(btns.get("LT"), lt > 200)
-        self._set_input(btns.get("RT"), rt > 200)
-        self._process_sticks(data, prof, deadzone, rx, ry, is_mouse, held)
+        self._set_input(btns.get("LT"), lt > trig_thresh)
+        self._set_input(btns.get("RT"), rt > trig_thresh)
+        self._process_sticks(prof, deadzone, lx, ly, rx, ry, is_mouse, held)
 
-    def _process_sticks(self, data, prof, deadzone, rx, ry, is_mouse, held):
-        lx, ly = (
-            struct.unpack("<h", bytes(data[10:12]))[0],
-            struct.unpack("<h", bytes(data[12:14]))[0],
-        )
+    def _process_sticks(self, prof, deadzone, lx, ly, rx, ry, is_mouse, held):
         ls = prof["left_stick"]
         if math.hypot(lx, ly) > deadzone:
             self._set_input(ls.get("left"), lx < -deadzone * 0.6)
@@ -405,6 +455,7 @@ class GameSirBridge:
 
         rs = prof["right_stick"]
         if is_mouse:
+            curve = prof.get("mouse_curve", self.cfg.get("mouse_curve", 1.8))
             if "LB" in held:
                 sx, sy = calc_radial_vector(
                     rx, ry, deadzone, prof.get("scroll_speed", 2.8), 1.5
@@ -419,7 +470,11 @@ class GameSirBridge:
                 self._rem_x = self._rem_y = 0.0
             else:
                 mx, my = calc_radial_vector(
-                    rx, ry, deadzone, prof.get("mouse_speed", 18)
+                    rx,
+                    ry,
+                    deadzone,
+                    prof.get("mouse_speed", self.cfg.get("mouse_speed", 18)),
+                    curve,
                 )
                 self._rem_x += mx
                 self._rem_y -= my

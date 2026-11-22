@@ -3,7 +3,10 @@
   "auto_switch": true,
   "rumble_feedback": true,
   "deadzone": 10000,
+  "trigger_threshold": 200,
   "mouse_speed": 12,
+  "mouse_curve": 2.0,
+  "language": "pt",
   "app_rules": {
     "pcsx2": "emulators",
     "dolphin": "emulators",
@@ -30,8 +33,6 @@
         "MENU": "enter",
         "VIEW": "z",
         "SHARE": "f1",
-        "M1": "",
-        "M2": "",
         "UP": "up",
         "DOWN": "down",
         "LEFT": "left",
@@ -67,8 +68,6 @@
         "MENU": "esc",
         "VIEW": "tab",
         "SHARE": "f12",
-        "M1": "shift",
-        "M2": "ctrl",
         "UP": "1",
         "DOWN": "2",
         "LEFT": "3",
@@ -99,8 +98,6 @@
         "MENU": "enter",
         "VIEW": "tab",
         "SHARE": "mute",
-        "M1": "vol_down",
-        "M2": "vol_up",
         "UP": "up",
         "DOWN": "down",
         "LEFT": "left",
@@ -120,7 +117,5 @@
       },
       "right_stick": {}
     }
-  },
-  "mouse_curve": 2.2,
-  "language": "en"
+  }
 }
