@@ -8,9 +8,13 @@ import signal
 import subprocess
 import sys
 import threading
+import urllib.request
+import webbrowser
 
 LOCK_PATH = "/tmp/gamesir_bridge.lock"
 WAKE_PATH = "/tmp/gamesir_bridge.wake"
+APP_VERSION = "v6.0.0"
+GITHUB_REPO = "analogart/gamesir-g7-se-macos"
 
 _lock_fp = open(LOCK_PATH, "w")
 try:
@@ -24,6 +28,8 @@ except OSError:
 
 import objc
 from AppKit import (
+    NSAlert,
+    NSAlertFirstButtonReturn,
     NSApplication,
     NSApplicationActivationPolicyRegular,
     NSBackingStoreBuffered,
@@ -47,9 +53,18 @@ from AppKit import (
     NSWindowStyleMaskClosable,
     NSWindowStyleMaskFullSizeContentView,
     NSWindowStyleMaskMiniaturizable,
+    NSWindowStyleMaskResizable,
     NSWindowStyleMaskTitled,
 )
-from Foundation import NSObject, NSTimer
+from Foundation import NSObject, NSTimer, NSURL, NSURLRequest
+
+try:
+    from WebKit import WKWebView, WKWebViewConfiguration
+
+    HAS_WEBKIT = True
+except ImportError:
+    HAS_WEBKIT = False
+
 from gamesir_bridge import GameSirBridge
 
 STRINGS = {
@@ -59,10 +74,17 @@ STRINGS = {
         "osd_profile": "Perfil: {}",
         "config_ui": "Configurar Botões (App Visual)",
         "reload": "Recarregar Configurações",
+        "check_updates": "Verificar Atualizações",
         "open_panel": "Abrir Painel de Controle",
         "quit": "Encerrar Bridge",
         "ax_warn": "Permissão de Acessibilidade pendente",
         "ax_fix": "Conceder Permissão de Acessibilidade",
+        "upd_title": "Atualizações — GameSir Bridge",
+        "upd_latest": "Você já está na versão mais recente ({}).",
+        "upd_avail": "Nova versão disponível: {} (atual: {}).\nDeseja abrir a página no GitHub?",
+        "upd_err": "Não foi possível verificar atualizações agora.",
+        "upd_open": "Abrir GitHub",
+        "upd_ok": "OK",
         "hint": "Fechar no X mantém o bridge ativo em segundo plano.\nAtalhos: VIEW + ↓ (Painel) | VIEW + ↑ (Perfil)",
     },
     "en": {
@@ -71,10 +93,17 @@ STRINGS = {
         "osd_profile": "Profile: {}",
         "config_ui": "Configure Buttons (Visual App)",
         "reload": "Reload Configuration",
+        "check_updates": "Check for Updates",
         "open_panel": "Open Control Panel",
         "quit": "Quit Bridge",
         "ax_warn": "Accessibility permission required",
         "ax_fix": "Grant Accessibility Permission",
+        "upd_title": "Updates — GameSir Bridge",
+        "upd_latest": "You are running the latest version ({}).",
+        "upd_avail": "New version available: {} (current: {}).\nOpen GitHub release page?",
+        "upd_err": "Could not check for updates right now.",
+        "upd_open": "Open GitHub",
+        "upd_ok": "OK",
         "hint": "Closing with X keeps the bridge running in background.\nShortcuts: VIEW + ↓ (Panel) | VIEW + ↑ (Profile)",
     },
     "es": {
@@ -83,10 +112,17 @@ STRINGS = {
         "osd_profile": "Perfil: {}",
         "config_ui": "Configurar Botones (App Visual)",
         "reload": "Recargar Configuración",
+        "check_updates": "Buscar Actualizaciones",
         "open_panel": "Abrir Panel de Control",
         "quit": "Cerrar Bridge",
         "ax_warn": "Permiso de Accesibilidad pendiente",
         "ax_fix": "Conceder Permiso de Accesibilidad",
+        "upd_title": "Actualizaciones — GameSir Bridge",
+        "upd_latest": "Ya tienes la versión más reciente ({}).",
+        "upd_avail": "Nueva versión disponible: {} (actual: {}).\n¿Abrir la página en GitHub?",
+        "upd_err": "No se pudieron comprobar actualizaciones ahora.",
+        "upd_open": "Abrir GitHub",
+        "upd_ok": "OK",
         "hint": "Cerrar con X mantiene el bridge activo en segundo plano.\nAtajos: VIEW + ↓ (Panel) | VIEW + ↑ (Perfil)",
     },
 }
@@ -182,6 +218,61 @@ class ProfileOSD(NSObject):
         self.timer = None
 
 
+class ConfigWebWindow(NSObject):
+    def init(self):
+        self = objc.super(ConfigWebWindow, self).init()
+        if self is None:
+            return None
+        self.win = None
+        self.webview = None
+        return self
+
+    def windowShouldClose_(self, sender):
+        sender.orderOut_(None)
+        return False
+
+    @objc.python_method
+    def show(self, url_str="http://127.0.0.1:58492"):
+        if not HAS_WEBKIT:
+            webbrowser.open(url_str)
+            return
+
+        if self.win is None:
+            screen = NSScreen.mainScreen()
+            frame = screen.frame() if screen else NSMakeRect(0, 0, 1280, 800)
+            w = min(1160, int(frame.size.width * 0.88))
+            h = min(780, int(frame.size.height * 0.86))
+            x = (frame.size.width - w) / 2.0
+            y = (frame.size.height - h) / 2.0
+
+            win = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+                NSMakeRect(x, y, w, h),
+                NSWindowStyleMaskTitled
+                | NSWindowStyleMaskClosable
+                | NSWindowStyleMaskMiniaturizable
+                | NSWindowStyleMaskResizable,
+                NSBackingStoreBuffered,
+                False,
+            )
+            win.setTitle_(f"GameSir Bridge {APP_VERSION} — Visual Configurator")
+            win.setReleasedWhenClosed_(False)
+            win.setDelegate_(self)
+
+            cfg = WKWebViewConfiguration.alloc().init()
+            wv = WKWebView.alloc().initWithFrame_configuration_(
+                NSMakeRect(0, 0, w, h), cfg
+            )
+            wv.setAutoresizingMask_(18)  # Width + Height sizable
+            win.setContentView_(wv)
+            self.win = win
+            self.webview = wv
+
+        req = NSURLRequest.requestWithURL_(NSURL.URLWithString_(url_str))
+        self.webview.loadRequest_(req)
+        NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
+        self.win.makeKeyAndOrderFront_(None)
+
+
 class ControlPanel(NSObject):
     def initWithController_(self, ctrl):
         self = objc.super(ControlPanel, self).init()
@@ -237,7 +328,7 @@ class ControlPanel(NSObject):
         ax_ok = is_accessibility_trusted()
         extra_ax_h = 0 if ax_ok else 44
         w = 390
-        h = 300 + (len(profiles) * 38) + extra_ax_h
+        h = 338 + (len(profiles) * 38) + extra_ax_h
         x = (frame.size.width - w) / 2.0
         y = (frame.size.height - h) / 2.0
 
@@ -250,7 +341,7 @@ class ControlPanel(NSObject):
             NSBackingStoreBuffered,
             False,
         )
-        win.setTitle_("GameSir Bridge v6.0")
+        win.setTitle_(f"GameSir Bridge {APP_VERSION}")
         win.setTitlebarAppearsTransparent_(True)
         win.setOpaque_(False)
         win.setBackgroundColor_(NSColor.clearColor())
@@ -302,6 +393,7 @@ class ControlPanel(NSObject):
         for title, sel in [
             (self.ctrl.t("config_ui"), "openCfg:"),
             (self.ctrl.t("reload"), "reloadCfg:"),
+            (self.ctrl.t("check_updates"), "checkUpdates:"),
             (self.ctrl.t("quit"), "quitApp:"),
         ]:
             btn = NSButton.alloc().initWithFrame_(NSMakeRect(30, cur_y, w - 60, 32))
@@ -365,6 +457,9 @@ class ControlPanel(NSObject):
         self.ctrl.reload_all()
         self.show()
 
+    def checkUpdates_(self, _sender):
+        self.ctrl.check_github_updates()
+
     def quitApp_(self, _sender):
         NSApplication.sharedApplication().terminate_(None)
 
@@ -385,11 +480,13 @@ class GameSirAppDelegate(NSObject):
 
         self.osd = ProfileOSD.alloc().init()
         self.panel = ControlPanel.alloc().initWithController_(self)
+        self.config_win = ConfigWebWindow.alloc().init()
 
         self._lock = threading.Lock()
         self._pending_status = None
         self._pending_osd = None
         self._pending_hud = False
+        self._pending_update_result = None
 
         self.bridge = GameSirBridge(
             on_status=self._queue_status,
@@ -520,9 +617,68 @@ class GameSirAppDelegate(NSObject):
 
     @objc.python_method
     def open_config_ui(self):
-        subprocess.Popen(
-            [sys.executable, str(pathlib.Path(__file__).parent / "config_ui.py")]
-        )
+        cmd = [sys.executable, str(pathlib.Path(__file__).parent / "config_ui.py")]
+        if HAS_WEBKIT:
+            cmd.append("--no-browser")
+        subprocess.Popen(cmd)
+        if HAS_WEBKIT:
+            NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+                0.45, self, "openNativeWebTimer:", None, False
+            )
+
+    def openNativeWebTimer_(self, _t):
+        self.config_win.show("http://127.0.0.1:58492")
+
+    @objc.python_method
+    def check_github_updates(self):
+        def _worker():
+            try:
+                req = urllib.request.Request(
+                    f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest",
+                    headers={"User-Agent": "GameSir-Bridge-macOS"},
+                )
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    tag = data.get("tag_name") or APP_VERSION
+                    url = data.get("html_url") or f"https://github.com/{GITHUB_REPO}"
+                    with self._lock:
+                        self._pending_update_result = ("ok", tag, url)
+            except Exception:
+                try:
+                    req = urllib.request.Request(
+                        f"https://api.github.com/repos/{GITHUB_REPO}/tags",
+                        headers={"User-Agent": "GameSir-Bridge-macOS"},
+                    )
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        tags = json.loads(resp.read().decode("utf-8"))
+                        tag = tags[0]["name"] if tags else APP_VERSION
+                        url = f"https://github.com/{GITHUB_REPO}/releases"
+                        with self._lock:
+                            self._pending_update_result = ("ok", tag, url)
+                except Exception:
+                    with self._lock:
+                        self._pending_update_result = ("err", None, None)
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    @objc.python_method
+    def _show_update_alert(self, state, tag, url):
+        alert = NSAlert.alloc().init()
+        alert.setMessageText_(self.t("upd_title"))
+        if state == "err":
+            alert.setInformativeText_(self.t("upd_err"))
+            alert.addButtonWithTitle_(self.t("upd_ok"))
+            alert.runModal()
+        elif tag == APP_VERSION:
+            alert.setInformativeText_(self.t("upd_latest").format(APP_VERSION))
+            alert.addButtonWithTitle_(self.t("upd_ok"))
+            alert.runModal()
+        else:
+            alert.setInformativeText_(self.t("upd_avail").format(tag, APP_VERSION))
+            alert.addButtonWithTitle_(self.t("upd_open"))
+            alert.addButtonWithTitle_(self.t("upd_ok"))
+            if alert.runModal() == NSAlertFirstButtonReturn:
+                webbrowser.open(url)
 
     @objc.python_method
     def reload_all(self):
@@ -558,9 +714,11 @@ class GameSirAppDelegate(NSObject):
             st = self._pending_status
             osd = self._pending_osd
             hud = self._pending_hud
+            upd = self._pending_update_result
             self._pending_status = None
             self._pending_osd = None
             self._pending_hud = False
+            self._pending_update_result = None
 
         if st is not None:
             dev, _ = st
@@ -578,6 +736,9 @@ class GameSirAppDelegate(NSObject):
 
         if hud:
             self.panel.toggle()
+
+        if upd is not None:
+            self._show_update_alert(*upd)
 
 
 if __name__ == "__main__":

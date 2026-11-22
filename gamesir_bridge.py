@@ -1,4 +1,4 @@
-import json, math, os, pathlib, struct, sys, time, usb.core, usb.util
+import json, math, os, pathlib, struct, subprocess, sys, time, usb.core, usb.util
 from pynput.keyboard import Controller as KbController, Key
 from pynput.mouse import Controller as MouseController, Button
 
@@ -181,9 +181,15 @@ class GameSirBridge:
         self._rem_x = self._rem_y = self._scroll_rem_x = self._scroll_rem_y = 0.0
 
     def trigger_macro(self, combo_str):
+        val = combo_str.strip()
+        if val.lower().startswith("shortcut:"):
+            sc_name = val.split(":", 1)[1].strip()
+            if sc_name:
+                subprocess.Popen(["shortcuts", "run", sc_name])
+            return
         keys = [
             SPECIAL_KEYS.get(k.strip().lower(), k.strip().lower())
-            for k in combo_str.split("+")
+            for k in val.split("+")
             if k.strip()
         ]
         for k in keys:
@@ -307,6 +313,12 @@ class GameSirBridge:
 
     def _set_input(self, action, pressed):
         if not action:
+            return
+        if action.lower().startswith("shortcut:"):
+            if pressed:
+                sc_name = action.split(":", 1)[1].strip()
+                if sc_name:
+                    subprocess.Popen(["shortcuts", "run", sc_name])
             return
         if action in ("mouse_left", "mouse_right"):
             btn = Button.left if action == "mouse_left" else Button.right

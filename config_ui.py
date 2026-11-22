@@ -4,6 +4,7 @@ import os
 import pathlib
 import signal
 import socketserver
+import sys
 import threading
 import time
 import urllib.parse
@@ -211,7 +212,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="card">
       <h2 id="hCombos">Global Combos & Macros</h2>
       <textarea id="globalCombos" placeholder="VIEW+MENU = cmd+q&#10;LB+RB = cmd+shift+3"></textarea>
-      <div id="hintCombos" class="hint">Format: BTN1+BTN2 = key1+key2 (1 per line)</div>
+      <div id="hintCombos" class="hint">Format: BTN1+BTN2 = key1+key2 or shortcut:Name (1 per line)</div>
     </div>
   </div>
 </div>
@@ -237,7 +238,7 @@ const I18N = {
     hMainBtns: "Botões Principais & Ombros", hDpadBtns: "D-Pad & Sistema",
     hLeftStick: "Analógico Esquerdo", hRightStick: "Analógico Direito (Modo Teclas)",
     hAppRules: "Troca Automática por App", hintAppRules: "Formato: palavra_chave_janela = nome_do_perfil (1 por linha)",
-    hCombos: "Combos & Macros Globais", hintCombos: "Formato: BOTAO1+BOTAO2 = tecla1+tecla2 (1 por linha)",
+    hCombos: "Combos, Macros & Shortcuts", hintCombos: "Formato: BTN1+BTN2 = tecla1+tecla2 ou shortcut:Nome (1 por linha)",
     promptNew: "Nome do novo perfil (ex: Valorant, Premiere):",
     errExists: "Já existe um perfil com esse nome.",
     errMinOne: "Você precisa manter pelo menos 1 perfil.",
@@ -266,7 +267,7 @@ const I18N = {
     hMainBtns: "Face & Shoulder Buttons", hDpadBtns: "D-Pad & System",
     hLeftStick: "Left Stick", hRightStick: "Right Stick (Keys Mode)",
     hAppRules: "Auto-Switch by App", hintAppRules: "Format: window_keyword = profile_name (1 per line)",
-    hCombos: "Global Combos & Macros", hintCombos: "Format: BTN1+BTN2 = key1+key2 (1 per line)",
+    hCombos: "Global Combos, Macros & Shortcuts", hintCombos: "Format: BTN1+BTN2 = key1+key2 or shortcut:Name (1 per line)",
     promptNew: "New profile name (e.g. Valorant, Premiere):",
     errExists: "A profile with that name already exists.",
     errMinOne: "You must keep at least 1 profile.",
@@ -295,7 +296,7 @@ const I18N = {
     hMainBtns: "Botones Principales y Superiores", hDpadBtns: "Cruceta y Sistema",
     hLeftStick: "Joystick Izquierdo", hRightStick: "Joystick Derecho (Modo Teclas)",
     hAppRules: "Cambio Automático por App", hintAppRules: "Formato: palabra_clave_ventana = nombre_perfil (1 por línea)",
-    hCombos: "Combos y Macros Globales", hintCombos: "Formato: BOTON1+BOTON2 = tecla1+tecla2 (1 por línea)",
+    hCombos: "Combos, Macros y Shortcuts", hintCombos: "Formato: BOTON1+BOTON2 = tecla1+tecla2 o shortcut:Nombre (1 por línea)",
     promptNew: "Nombre del nuevo perfil (ej: Valorant, Premiere):",
     errExists: "Ya existe un perfil con ese nombre.",
     errMinOne: "Debes mantener al menos 1 perfil.",
@@ -440,14 +441,14 @@ function setEditLayer(layer) {
 
 function renderGlobalRules() {
   const rules = cfg.app_rules || {};
-  document.getElementById("appRules").value = Object.entries(rules).map(([k, v]) => `${k} = ${v}`).join("\\n");
+  document.getElementById("appRules").value = Object.entries(rules).map(([k, v]) => `${k} = ${v}`).join("\n");
   const combos = cfg.combos || {};
-  document.getElementById("globalCombos").value = Object.entries(combos).map(([k, v]) => `${k} = ${v}`).join("\\n");
+  document.getElementById("globalCombos").value = Object.entries(combos).map(([k, v]) => `${k} = ${v}`).join("\n");
 }
 
 function parseLinesToMap(text) {
   const out = {};
-  text.split("\\n").forEach(line => {
+  text.split("\n").forEach(line => {
     const idx = line.indexOf("=");
     if (idx > 0) {
       const k = line.slice(0, idx).trim();
@@ -545,7 +546,7 @@ function mapDomKey(e) {
     "AudioVolumeMute": "mute", "MediaPlayPause": "play_pause"
   };
   if (map[e.key]) return map[e.key];
-  if (/^F\\d{1,2}$/i.test(e.key)) return e.key.toLowerCase();
+  if (/^F\d{1,2}$/i.test(e.key)) return e.key.toLowerCase();
   if (e.key.length === 1) return e.key.toLowerCase();
   return null;
 }
@@ -812,9 +813,10 @@ class ReusableTCPServer(socketserver.TCPServer):
 if __name__ == "__main__":
     kill_previous_instance()
     with ReusableTCPServer(("127.0.0.1", PORT), ConfigHandler) as httpd:
-        threading.Timer(
-            0.3, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}")
-        ).start()
+        if "--no-browser" not in sys.argv:
+            threading.Timer(
+                0.3, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}")
+            ).start()
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

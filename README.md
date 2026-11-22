@@ -1,37 +1,23 @@
-# GameSir G7 SE Universal Bridge for macOS (v5.2.0)
+# GameSir Bridge for macOS (`v6.0.0`)
 
-Userspace USB GIP-to-keyboard & mouse bridge for macOS — no kernel extensions required. Features a native macOS Control Panel window, Dock integration, live web button configurator, automatic profile switching by active window, and rumble feedback.
+Userspace USB GIP (Gaming Input Protocol) driver, key/mouse mapper, and native macOS HUD app for **GameSir G7 SE**, **GameSir G7**, **GameSir G7 HE**, and **GameSir T4 Kaleid** on Apple Silicon & Intel Macs.
 
-## Supported Controllers
-- **GameSir G7 SE** (`0x3537:0x1010`)
-- **GameSir G7** (`0x3537:0x1001`)
-- **GameSir G7 HE** (`0x3537:0x1007`)
-- **GameSir T4 Kaleid** (`0x3537:0x1002`)
+## What's New in v6.0.0
+* **Native Translucent macOS HUD & Embedded Configurator:** True `NSVisualEffectView` HUD window, Dock quick-switch menu, and an integrated `WKWebView` visual configurator window.
+* **Live SVG Controller Telemetry:** Real-time interactive controller visualizer showing pressed buttons, analog stick vectors, deadzone rings, and trigger pressure bars.
+* **Zero-Drift Analog Calibration:** One-click resting center calibration (`lx`, `ly`, `rx`, `ry` offsets) saved directly to `profiles.json`.
+* **Shift Layer (Secondary Mappings):** Assign any button as a modifier to unlock a full second layer of actions per profile.
+* **Per-Button Turbo (Rapid-Fire) & Toggle (Hold Lock):** Configure adjustable rapid-fire (`2–40 Hz`) or toggle locks on any button.
+* **Press-to-Bind Recorder, Presets & JSON Import/Export:** Bind keys with a single keypress (`⌨️`), load ready-made templates (`PCSX2`, `Dolphin`, `Hollow Knight`), or share profiles.
+* **macOS Shortcuts Integration:** Trigger native macOS Shortcuts from any button or combo using `shortcut:Shortcut Name`.
+* **Full Multi-Language UI:** English, Português, and Español across both the native macOS HUD and the Visual Configurator.
 
-## Features
-- **Native Control Panel & OSD:** Switch profiles with a click or via controller shortcuts with floating on-screen notifications and vibration feedback.
-- **Visual Web Configurator (`localhost:58492`):** Remap buttons, sticks, deadzones, trigger thresholds, mouse speed/curve, auto-switch app rules, and global macros with a real-time controller tester.
-- **Auto-Switch by Active App:** Automatically switches between `emulators`, `mac_games`, and `desktop_media` based on the focused window (PCSX2, Dolphin, OpenEmu, RetroArch, Steam, browsers, etc.).
-- **Analog Mouse & Scroll:** Use the right stick as a radial-curved mouse cursor and hold `LB + Right Stick` for smooth scrolling.
+## Quick Shortcuts
+* `VIEW + UP`: Cycle active profile (with floating HUD notification and controller rumble)
+* `VIEW + DOWN`: Toggle Control Panel HUD
+* `LB + Right Stick` (in Mouse mode): 2D Trackpad-style Scroll
 
-## Quick Install
-```bash
-git clone [https://github.com/analogart/gamesir-g7-se-macos.git](https://github.com/analogart/gamesir-g7-se-macos.git)
-cd gamesir-g7-se-macos
-bash install.sh
-```
-
-> **macOS Permissions:** On first launch, grant **Accessibility** and **Input Monitoring** permissions to **GameSir Bridge** (and **Python**) in **System Settings > Privacy & Security** (or run `open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"` in Terminal).
-
-## Controller Shortcuts
-| Shortcut | Action |
-| :--- | :--- |
-| `VIEW + D-Pad Up` | Cycle profiles with OSD & rumble feedback |
-| `VIEW + D-Pad Down` | Show / hide the native Control Panel window |
-| `VIEW + MENU` | Quit active app (`Cmd + Q`) |
-| `LB + RB` | Take screenshot (`Cmd + Shift + 3`) |
-| `LB + Right Stick` | Scroll (when right stick is in `mouse` mode) |
-
-## CLI Mode & Uninstall
-- **Run headless in Terminal:** `python3 gamesir_bridge.py emulators`
-- **Uninstall completely (app, LaunchAgent, and temp files):** `bash uninstall.sh`
+## Requirements
+* macOS 12+
+* Python 3 + `pyusb`, `pynput`, `pyobjc` (`libusb` via Homebrew: `brew install libusb`)
+* Accessibility permission granted to **GameSir Bridge.app** in *System Settings → Privacy & Security → Accessibility*.
