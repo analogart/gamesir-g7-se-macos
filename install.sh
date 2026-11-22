@@ -7,7 +7,7 @@ PLIST_PATH="$HOME/Library/LaunchAgents/com.analogart.gamesirbridge.plist"
 PYTHON_BIN="$(command -v python3)"
 
 echo "Instalando dependências Python..."
-"$PYTHON_BIN" -m pip install --quiet pyusb pynput rumps pyobjc-framework-Cocoa
+"$PYTHON_BIN" -m pip install --break-system-packages --quiet pyusb pynput rumps pyobjc-framework-Cocoa
 
 echo "Criando bundle nativo em $APP_DIR..."
 rm -rf "$APP_DIR"
@@ -28,9 +28,10 @@ cat << INFO > "$APP_DIR/Contents/Info.plist"
     <key>CFBundleName</key>
     <string>GameSir Bridge</string>
     <key>CFBundleVersion</key>
-    <string>4.0.0</string>
+    <string>5.0.0</string>
     <key>LSUIElement</key>
     <true/>
+</dict>
 </dict>
 </plist>
 INFO
@@ -77,6 +78,7 @@ cat << PLIST > "$PLIST_PATH"
             </dict>
         </dict>
     </dict>
+</dict>
 </plist>
 PLIST
 
