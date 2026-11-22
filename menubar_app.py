@@ -169,7 +169,7 @@ class ProfileOSD:
 
 class GameSirMenuBar(rumps.App):
     def __init__(self):
-        super().__init__("", quit_button=None)
+        super().__init__("GS", quit_button=None)
         self.osd = ProfileOSD()
         self._lock = threading.Lock()
         self._pending_status = None
