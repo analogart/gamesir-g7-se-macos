@@ -1,3 +1,4 @@
+import ctypes
 import fcntl
 import json
 import locale
@@ -38,8 +39,13 @@ from AppKit import (
     NSScreen,
     NSTextAlignmentCenter,
     NSTextField,
+    NSVisualEffectBlendingModeBehindWindow,
+    NSVisualEffectMaterialHUDWindow,
+    NSVisualEffectStateActive,
+    NSVisualEffectView,
     NSWindow,
     NSWindowStyleMaskClosable,
+    NSWindowStyleMaskFullSizeContentView,
     NSWindowStyleMaskMiniaturizable,
     NSWindowStyleMaskTitled,
 )
@@ -48,41 +54,55 @@ from gamesir_bridge import GameSirBridge
 
 STRINGS = {
     "pt": {
-        "searching": "Status: Procurando controle...",
+        "searching": "Procurando controle USB...",
         "connected": "Conectado: {}",
-        "disconnected": "Desconectado (aguardando USB)",
         "osd_profile": "Perfil: {}",
         "config_ui": "Configurar Botões (App Visual)",
         "reload": "Recarregar Configurações",
         "open_panel": "Abrir Painel de Controle",
         "quit": "Encerrar Bridge",
-        "hint": "Fechar no X mantém o bridge ativo em segundo plano.\nAtalho no controle: VIEW + ↓ (Painel) | VIEW + ↑ (Perfil)",
+        "ax_warn": "Permissão de Acessibilidade pendente",
+        "ax_fix": "Conceder Permissão de Acessibilidade",
+        "hint": "Fechar no X mantém o bridge ativo em segundo plano.\nAtalhos: VIEW + ↓ (Painel) | VIEW + ↑ (Perfil)",
     },
     "en": {
-        "searching": "Status: Searching for controller...",
+        "searching": "Searching for USB controller...",
         "connected": "Connected: {}",
-        "disconnected": "Disconnected (waiting for USB)",
         "osd_profile": "Profile: {}",
         "config_ui": "Configure Buttons (Visual App)",
         "reload": "Reload Configuration",
         "open_panel": "Open Control Panel",
         "quit": "Quit Bridge",
-        "hint": "Closing with X keeps the bridge running in background.\nController shortcut: VIEW + ↓ (Panel) | VIEW + ↑ (Profile)",
+        "ax_warn": "Accessibility permission required",
+        "ax_fix": "Grant Accessibility Permission",
+        "hint": "Closing with X keeps the bridge running in background.\nShortcuts: VIEW + ↓ (Panel) | VIEW + ↑ (Profile)",
     },
     "es": {
-        "searching": "Estado: Buscando control...",
+        "searching": "Buscando control USB...",
         "connected": "Conectado: {}",
-        "disconnected": "Desconectado (esperando USB)",
         "osd_profile": "Perfil: {}",
         "config_ui": "Configurar Botones (App Visual)",
         "reload": "Recargar Configuración",
         "open_panel": "Abrir Panel de Control",
         "quit": "Cerrar Bridge",
-        "hint": "Cerrar con X mantiene el bridge activo en segundo plano.\nAtajo en control: VIEW + ↓ (Panel) | VIEW + ↑ (Perfil)",
+        "ax_warn": "Permiso de Accesibilidad pendiente",
+        "ax_fix": "Conceder Permiso de Accesibilidad",
+        "hint": "Cerrar con X mantiene el bridge activo en segundo plano.\nAtajos: VIEW + ↓ (Panel) | VIEW + ↑ (Perfil)",
     },
 }
 
 LANG_LABELS = [("pt", "Português"), ("en", "English"), ("es", "Español")]
+
+
+def is_accessibility_trusted():
+    try:
+        app_services = ctypes.cdll.LoadLibrary(
+            "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices"
+        )
+        app_services.AXIsProcessTrusted.restype = ctypes.c_bool
+        return bool(app_services.AXIsProcessTrusted())
+    except Exception:
+        return True
 
 
 def detect_lang(cfg):
@@ -128,11 +148,15 @@ class ProfileOSD(NSObject):
         )
         win.setLevel_(NSFloatingWindowLevel)
         win.setOpaque_(False)
-        win.setBackgroundColor_(NSColor.colorWithCalibratedWhite_alpha_(0.08, 0.88))
+        win.setBackgroundColor_(NSColor.clearColor())
         win.setIgnoresMouseEvents_(True)
         win.setHasShadow_(True)
-        win.contentView().setWantsLayer_(True)
-        win.contentView().layer().setCornerRadius_(15.0)
+
+        fx = NSVisualEffectView.alloc().initWithFrame_(NSMakeRect(0, 0, w, h))
+        fx.setMaterial_(NSVisualEffectMaterialHUDWindow)
+        fx.setBlendingMode_(NSVisualEffectBlendingModeBehindWindow)
+        fx.setState_(NSVisualEffectStateActive)
+        win.setContentView_(fx)
 
         lbl = NSTextField.alloc().initWithFrame_(NSMakeRect(12, 11, w - 24, 30))
         lbl.setStringValue_(label_text)
@@ -140,11 +164,11 @@ class ProfileOSD(NSObject):
         lbl.setDrawsBackground_(False)
         lbl.setEditable_(False)
         lbl.setSelectable_(False)
-        lbl.setTextColor_(NSColor.whiteColor())
+        lbl.setTextColor_(NSColor.labelColor())
         lbl.setFont_(NSFont.boldSystemFontOfSize_(16.0))
         lbl.setAlignment_(NSTextAlignmentCenter)
 
-        win.contentView().addSubview_(lbl)
+        fx.addSubview_(lbl)
         win.orderFrontRegardless()
         self.win = win
         self.timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
@@ -187,12 +211,14 @@ class ControlPanel(NSObject):
     @objc.python_method
     def sync_ui(self):
         if self.status_lbl is not None:
-            st_text = (
-                f"●  {self.ctrl.t('connected').format(self.ctrl.last_device)}"
-                if self.ctrl.last_device
-                else f"○  {self.ctrl.t('searching')}"
-            )
-            self.status_lbl.setStringValue_(st_text)
+            if self.ctrl.last_device:
+                self.status_lbl.setStringValue_(
+                    f"●  {self.ctrl.t('connected').format(self.ctrl.last_device)}"
+                )
+                self.status_lbl.setTextColor_(NSColor.systemGreenColor())
+            else:
+                self.status_lbl.setStringValue_(f"○  {self.ctrl.t('searching')}")
+                self.status_lbl.setTextColor_(NSColor.labelColor())
         for prof_name, btn in self.profile_buttons.items():
             active = prof_name == self.ctrl.bridge.current_profile
             btn.setTitle_(f"✓   {prof_name}" if active else prof_name)
@@ -208,8 +234,10 @@ class ControlPanel(NSObject):
             return
         frame = screen.frame()
         profiles = list(self.ctrl.bridge.cfg.get("profiles", {}).keys())
-        w = 380
-        h = 285 + (len(profiles) * 38)
+        ax_ok = is_accessibility_trusted()
+        extra_ax_h = 0 if ax_ok else 44
+        w = 390
+        h = 300 + (len(profiles) * 38) + extra_ax_h
         x = (frame.size.width - w) / 2.0
         y = (frame.size.height - h) / 2.0
 
@@ -217,17 +245,27 @@ class ControlPanel(NSObject):
             NSMakeRect(x, y, w, h),
             NSWindowStyleMaskTitled
             | NSWindowStyleMaskClosable
-            | NSWindowStyleMaskMiniaturizable,
+            | NSWindowStyleMaskMiniaturizable
+            | NSWindowStyleMaskFullSizeContentView,
             NSBackingStoreBuffered,
             False,
         )
-        win.setTitle_("GameSir Bridge v5.2")
+        win.setTitle_("GameSir Bridge v6.0")
+        win.setTitlebarAppearsTransparent_(True)
+        win.setOpaque_(False)
+        win.setBackgroundColor_(NSColor.clearColor())
+        win.setHasShadow_(True)
         win.setReleasedWhenClosed_(False)
         win.setDelegate_(self)
-        content = win.contentView()
+
+        content = NSVisualEffectView.alloc().initWithFrame_(NSMakeRect(0, 0, w, h))
+        content.setMaterial_(NSVisualEffectMaterialHUDWindow)
+        content.setBlendingMode_(NSVisualEffectBlendingModeBehindWindow)
+        content.setState_(NSVisualEffectStateActive)
+        win.setContentView_(content)
 
         self.status_lbl = NSTextField.alloc().initWithFrame_(
-            NSMakeRect(20, h - 46, w - 40, 24)
+            NSMakeRect(20, h - 62, w - 40, 24)
         )
         self.status_lbl.setBezeled_(False)
         self.status_lbl.setDrawsBackground_(False)
@@ -237,8 +275,17 @@ class ControlPanel(NSObject):
         self.status_lbl.setAlignment_(NSTextAlignmentCenter)
         content.addSubview_(self.status_lbl)
 
+        cur_y = h - 104
+        if not ax_ok:
+            ax_btn = NSButton.alloc().initWithFrame_(NSMakeRect(30, cur_y, w - 60, 32))
+            ax_btn.setTitle_(f"⚠️  {self.ctrl.t('ax_fix')}")
+            ax_btn.setBezelStyle_(NSBezelStyleRounded)
+            ax_btn.setTarget_(self)
+            ax_btn.setAction_("openAccessibility:")
+            content.addSubview_(ax_btn)
+            cur_y -= 42
+
         self.profile_buttons = {}
-        cur_y = h - 90
         for prof_name in profiles:
             btn = NSButton.alloc().initWithFrame_(NSMakeRect(30, cur_y, w - 60, 32))
             btn.setBezelStyle_(NSBezelStyleRounded)
@@ -294,6 +341,14 @@ class ControlPanel(NSObject):
         NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
         win.makeKeyAndOrderFront_(None)
         self.win = win
+
+    def openAccessibility_(self, _sender):
+        subprocess.Popen(
+            [
+                "open",
+                "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+            ]
+        )
 
     def selectProf_(self, sender):
         self.ctrl.bridge.set_profile(sender.identifier(), vibrate=True, show_osd=True)
@@ -358,6 +413,43 @@ class GameSirAppDelegate(NSObject):
     def applicationShouldHandleReopen_hasVisibleWindows_(self, _sender, _flag):
         self.panel.show()
         return True
+
+    def applicationDockMenu_(self, _sender):
+        menu = NSMenu.alloc().init()
+        status_title = (
+            self.t("connected").format(self.last_device)
+            if self.last_device
+            else self.t("searching")
+        )
+        st_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            status_title, None, ""
+        )
+        st_item.setEnabled_(False)
+        menu.addItem_(st_item)
+        menu.addItem_(NSMenuItem.separatorItem())
+
+        for prof_name in self.bridge.cfg.get("profiles", {}).keys():
+            item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                prof_name, "dockSelectProfile:", ""
+            )
+            item.setTarget_(self)
+            item.setRepresentedObject_(prof_name)
+            if prof_name == self.bridge.current_profile:
+                item.setState_(1)
+            menu.addItem_(item)
+
+        menu.addItem_(NSMenuItem.separatorItem())
+        cfg_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            self.t("config_ui"), "openCfgAction:", ""
+        )
+        cfg_item.setTarget_(self)
+        menu.addItem_(cfg_item)
+        return menu
+
+    def dockSelectProfile_(self, sender):
+        self.bridge.set_profile(sender.representedObject(), vibrate=True, show_osd=True)
+        if self.panel.is_visible():
+            self.panel.sync_ui()
 
     def applicationWillTerminate_(self, _notif):
         self.bridge.running = False

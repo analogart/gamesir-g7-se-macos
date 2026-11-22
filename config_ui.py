@@ -20,36 +20,51 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GameSir Bridge v5.2 — Configurator</title>
+<title>GameSir Bridge v6.0 — Visual Configurator</title>
 <style>
-  :root { --bg: #0f1115; --card: #181b22; --border: #2a2f3d; --accent: #3b82f6; --ok: #10b981; --danger: #ef4444; --text: #f3f4f6; --muted: #9ca3af; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; }
-  .container { max-width: 1020px; margin: 0 auto; }
-  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 16px; gap: 12px; flex-wrap: wrap; }
-  h1 { font-size: 22px; margin: 0; }
-  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  select, input, textarea, button { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; font-family: inherit; }
+  :root { --bg: #0c0e12; --card: #161922; --border: #262b38; --accent: #3b82f6; --ok: #10b981; --warn: #f59e0b; --danger: #ef4444; --text: #f3f4f6; --muted: #9ca3af; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 22px; }
+  .container { max-width: 1080px; margin: 0 auto; }
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 14px; gap: 10px; flex-wrap: wrap; }
+  h1 { font-size: 21px; margin: 0; display: flex; align-items: center; gap: 8px; }
+  .badge { font-size: 11px; background: rgba(59,130,246,0.2); color: var(--accent); padding: 2px 8px; border-radius: 99px; border: 1px solid rgba(59,130,246,0.4); }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  select, input, textarea, button { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 7px 11px; font-size: 13px; font-family: inherit; }
   button { cursor: pointer; font-weight: 600; transition: 0.15s; }
+  button:hover { border-color: #4b5563; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  button.primary:hover { filter: brightness(1.1); }
-  button.danger { background: rgba(239,68,68,0.15); border-color: var(--danger); color: var(--danger); }
-  .live-bar { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 13px; }
-  .pill { display: inline-block; background: var(--accent); color: #fff; padding: 2px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; font-size: 12px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  button.danger { background: rgba(239,68,68,0.14); border-color: var(--danger); color: var(--danger); }
+  .visualizer-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 18px; display: flex; flex-direction: column; align-items: center; }
+  .vis-header { width: 100%; display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
+  svg.pad { width: 100%; max-width: 540px; height: auto; user-select: none; }
+  .pad-body { fill: #1e222d; stroke: #333a4d; stroke-width: 2.5; }
+  .pad-btn { fill: #282e3d; stroke: #465069; stroke-width: 1.5; transition: fill 0.06s; }
+  .pad-btn.active { fill: var(--accent); stroke: #93c5fd; filter: drop-shadow(0 0 6px rgba(59,130,246,0.8)); }
+  .pad-txt { fill: #cbd5e1; font-size: 10px; font-weight: 700; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .stick-well { fill: #12151c; stroke: #3b4254; stroke-width: 1.5; }
+  .dz-ring { fill: rgba(59,130,246,0.08); stroke: rgba(59,130,246,0.45); stroke-width: 1; stroke-dasharray: 3 2; }
+  .stick-dot { fill: var(--ok); stroke: #fff; stroke-width: 1.5; }
+  .trig-bg { fill: #12151c; stroke: #3b4254; stroke-width: 1.5; rx: 4; }
+  .trig-fill { fill: var(--accent); rx: 3; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(305px, 1fr)); gap: 16px; margin-bottom: 20px; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
-  .card h2 { font-size: 14px; margin: 0 0 14px 0; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
-  .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; }
-  .row label { font-size: 13px; color: var(--muted); }
-  .row input, .row select { width: 145px; text-align: center; }
+  .card h2 { font-size: 13px; margin: 0 0 14px 0; color: var(--accent); text-transform: uppercase; letter-spacing: 0.6px; }
+  .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; gap: 8px; }
+  .row label { font-size: 13px; color: var(--muted); flex: 1; }
+  .row input, .row select { width: 125px; text-align: center; }
+  .bind-wrap { display: flex; gap: 5px; align-items: center; }
+  .bind-btn { padding: 6px 8px; font-size: 11px; color: var(--muted); }
+  .bind-btn.listening { background: var(--warn); color: #000; border-color: var(--warn); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.65; } }
   textarea { width: 100%; box-sizing: border-box; min-height: 92px; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; line-height: 1.5; }
   .hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
-  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--ok); color: #fff; padding: 12px 20px; border-radius: 10px; font-weight: 600; display: none; box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--ok); color: #fff; padding: 12px 20px; border-radius: 10px; font-weight: 600; display: none; box-shadow: 0 8px 20px rgba(0,0,0,0.4); z-index: 99; }
 </style>
 </head>
 <body>
 <div class="container">
   <header>
-    <h1>🎮 GameSir Bridge v5.2</h1>
+    <h1>🎮 GameSir Bridge <span class="badge">v6.0</span></h1>
     <div class="toolbar">
       <select id="langSelect" onchange="changeLang()">
         <option value="pt">Português</option>
@@ -57,16 +72,83 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <option value="es">Español</option>
       </select>
       <select id="profileSelect" onchange="renderProfile()"></select>
-      <button id="btnNew" onclick="createProfile()">+ Novo Perfil</button>
+      <select id="templateSelect" onchange="applyTemplate()">
+        <option value="" id="optTplDefault">+ Preset...</option>
+        <option value="pcsx2">PCSX2 / PS2</option>
+        <option value="dolphin">Dolphin / GameCube</option>
+        <option value="hollow">Hollow Knight / 2D</option>
+      </select>
+      <button id="btnNew" onclick="createProfile()">+ Novo</button>
+      <button id="btnExport" onclick="exportProfile()">Exportar</button>
+      <button id="btnImport" onclick="document.getElementById('importFile').click()">Importar</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importProfile(event)">
       <button id="btnDel" class="danger" onclick="deleteProfile()">Excluir</button>
       <button id="btnSave" class="primary" onclick="saveConfig()">Salvar Tudo</button>
     </div>
   </header>
 
-  <div class="live-bar">
-    <div id="liveStatus">● Waiting for controller...</div>
-    <div id="liveButtons"></div>
-    <div id="liveSticks" style="color: var(--muted); font-family: monospace;">LS: 0, 0 | RS: 0, 0</div>
+  <div class="visualizer-card">
+    <div class="vis-header">
+      <div id="liveStatus">○ Waiting for controller...</div>
+      <div id="liveSticks" style="color: var(--muted); font-family: monospace;">LS: 0, 0 | RS: 0, 0 | LT: 0 RT: 0</div>
+    </div>
+    <svg class="pad" viewBox="0 0 520 260">
+      <!-- Triggers -->
+      <rect x="85" y="12" width="70" height="14" class="trig-bg"/>
+      <rect id="bar-LT" x="86" y="13" width="0" height="12" class="trig-fill"/>
+      <text x="65" y="19" class="pad-txt">LT</text>
+
+      <rect x="365" y="12" width="70" height="14" class="trig-bg"/>
+      <rect id="bar-RT" x="366" y="13" width="0" height="12" class="trig-fill"/>
+      <text x="455" y="19" class="pad-txt">RT</text>
+
+      <!-- Bumpers -->
+      <rect id="svg-LB" x="75" y="34" width="90" height="20" rx="8" class="pad-btn"/>
+      <text x="120" y="44" class="pad-txt">LB</text>
+      <rect id="svg-RB" x="355" y="34" width="90" height="20" rx="8" class="pad-btn"/>
+      <text x="400" y="44" class="pad-txt">RB</text>
+
+      <!-- Shell -->
+      <path d="M90,56 L430,56 C468,56 492,115 486,185 C482,226 452,244 432,232 C406,216 392,185 352,185 L168,185 C128,185 114,216 88,232 C68,244 38,226 34,185 C28,115 52,56 90,56 Z" class="pad-body"/>
+
+      <!-- Center Buttons -->
+      <rect id="svg-VIEW" x="212" y="96" width="24" height="14" rx="7" class="pad-btn"/>
+      <text x="224" y="85" class="pad-txt">VIEW</text>
+      <rect id="svg-MENU" x="284" y="96" width="24" height="14" rx="7" class="pad-btn"/>
+      <text x="296" y="85" class="pad-txt">MENU</text>
+      <rect id="svg-SHARE" x="248" y="122" width="24" height="14" rx="7" class="pad-btn"/>
+      <text x="260" y="146" class="pad-txt">SHARE</text>
+
+      <!-- Left Stick + L3 -->
+      <circle id="svg-L3" cx="130" cy="108" r="30" class="stick-well"/>
+      <circle id="dz-L" cx="130" cy="108" r="10" class="dz-ring"/>
+      <circle id="dot-L" cx="130" cy="108" r="6" class="stick-dot"/>
+
+      <!-- D-Pad -->
+      <rect id="svg-UP" x="178" y="136" width="20" height="20" rx="4" class="pad-btn"/>
+      <text x="188" y="146" class="pad-txt">↑</text>
+      <rect id="svg-DOWN" x="178" y="176" width="20" height="20" rx="4" class="pad-btn"/>
+      <text x="188" y="186" class="pad-txt">↓</text>
+      <rect id="svg-LEFT" x="158" y="156" width="20" height="20" rx="4" class="pad-btn"/>
+      <text x="168" y="166" class="pad-txt">←</text>
+      <rect id="svg-RIGHT" x="198" y="156" width="20" height="20" rx="4" class="pad-btn"/>
+      <text x="208" y="166" class="pad-txt">→</text>
+
+      <!-- Right Stick + R3 -->
+      <circle id="svg-R3" cx="332" cy="162" r="30" class="stick-well"/>
+      <circle id="dz-R" cx="332" cy="162" r="10" class="dz-ring"/>
+      <circle id="dot-R" cx="332" cy="162" r="6" class="stick-dot"/>
+
+      <!-- ABXY -->
+      <circle id="svg-Y" cx="390" cy="84" r="13" class="pad-btn"/>
+      <text x="390" y="84" class="pad-txt">Y</text>
+      <circle id="svg-A" cx="390" cy="132" r="13" class="pad-btn"/>
+      <text x="390" y="132" class="pad-txt">A</text>
+      <circle id="svg-X" cx="366" cy="108" r="13" class="pad-btn"/>
+      <text x="366" y="108" class="pad-txt">X</text>
+      <circle id="svg-B" cx="414" cy="108" r="13" class="pad-btn"/>
+      <text x="414" y="108" class="pad-txt">B</text>
+    </svg>
   </div>
 
   <div class="grid">
@@ -78,7 +160,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <option id="optKeys" value="keys">Directional Keys</option>
         </select>
       </div>
-      <div class="row"><label id="lblDeadzone">Deadzone (0 - 30000)</label><input type="number" id="deadzone" step="500"></div>
+      <div class="row"><label id="lblDeadzone">Deadzone (0 - 30000)</label><input type="number" id="deadzone" step="500" oninput="renderProfileDeadzone()"></div>
       <div class="row"><label id="lblTrigger">Trigger Threshold (10 - 1000)</label><input type="number" id="triggerThreshold" step="25"></div>
       <div class="row"><label id="lblMouseSpeed">Mouse Speed</label><input type="number" id="mouseSpeed" step="1"></div>
       <div class="row"><label id="lblMouseCurve">Mouse Curve (1.0 - 3.0)</label><input type="number" id="mouseCurve" step="0.1"></div>
@@ -123,9 +205,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <script>
 const I18N = {
   pt: {
-    newProf: "+ Novo Perfil", delProf: "Excluir", saveAll: "Salvar Tudo",
-    waiting: "Aguardando leitura do controle...", disconnected: "Controle desconectado",
-    noBtns: "Nenhum botão pressionado",
+    optTplDefault: "+ Preset Pronto...",
+    newProf: "+ Novo", exportProf: "Exportar", importProf: "Importar", delProf: "Excluir", saveAll: "Salvar Tudo",
+    disconnected: "Controle desconectado",
     hSticks: "Analógicos & Gatilhos", lblRsMode: "Modo Analógico Direito",
     optMouse: "Mouse + Scroll (LB)", optKeys: "Teclas Direcionais",
     lblDeadzone: "Deadzone (0 - 30000)", lblTrigger: "Limiar Gatilho (10 - 1000)",
@@ -139,12 +221,14 @@ const I18N = {
     errExists: "Já existe um perfil com esse nome.",
     errMinOne: "Você precisa manter pelo menos 1 perfil.",
     confirmDel: "Excluir o perfil",
-    toastSaved: "Configurações salvas e aplicadas!"
+    toastSaved: "Configurações salvas e aplicadas!",
+    toastImported: "Perfil importado! Clique em Salvar Tudo para aplicar.",
+    bindBtn: "⌨️", bindWait: "Aperte tecla..."
   },
   en: {
-    newProf: "+ New Profile", delProf: "Delete", saveAll: "Save All",
-    waiting: "Waiting for controller...", disconnected: "Controller disconnected",
-    noBtns: "No buttons pressed",
+    optTplDefault: "+ Load Preset...",
+    newProf: "+ New", exportProf: "Export", importProf: "Import", delProf: "Delete", saveAll: "Save All",
+    disconnected: "Controller disconnected",
     hSticks: "Sticks & Triggers", lblRsMode: "Right Stick Mode",
     optMouse: "Mouse + Scroll (LB)", optKeys: "Directional Keys",
     lblDeadzone: "Deadzone (0 - 30000)", lblTrigger: "Trigger Threshold (10 - 1000)",
@@ -158,12 +242,14 @@ const I18N = {
     errExists: "A profile with that name already exists.",
     errMinOne: "You must keep at least 1 profile.",
     confirmDel: "Delete profile",
-    toastSaved: "Configuration saved and applied!"
+    toastSaved: "Configuration saved and applied!",
+    toastImported: "Profile imported! Click Save All to apply.",
+    bindBtn: "⌨️", bindWait: "Press key..."
   },
   es: {
-    newProf: "+ Nuevo Perfil", delProf: "Eliminar", saveAll: "Guardar Todo",
-    waiting: "Esperando lectura del control...", disconnected: "Control desconectado",
-    noBtns: "Ningún botón presionado",
+    optTplDefault: "+ Plantilla...",
+    newProf: "+ Nuevo", exportProf: "Exportar", importProf: "Importar", delProf: "Eliminar", saveAll: "Guardar Todo",
+    disconnected: "Control desconectado",
     hSticks: "Joysticks y Gatillos", lblRsMode: "Modo Joystick Derecho",
     optMouse: "Ratón + Scroll (LB)", optKeys: "Teclas Direccionales",
     lblDeadzone: "Zona Muerta (0 - 30000)", lblTrigger: "Umbral Gatillo (10 - 1000)",
@@ -177,22 +263,56 @@ const I18N = {
     errExists: "Ya existe un perfil con ese nombre.",
     errMinOne: "Debes mantener al menos 1 perfil.",
     confirmDel: "¿Eliminar el perfil",
-    toastSaved: "¡Configuración guardada y aplicada!"
+    toastSaved: "¡Configuración guardada y aplicada!",
+    toastImported: "¡Perfil importado! Haz clic en Guardar Todo.",
+    bindBtn: "⌨️", bindWait: "Pulsa tecla..."
+  }
+};
+
+const PRESETS = {
+  pcsx2: {
+    right_stick_mode: "keys", deadzone: 9000, trigger_threshold: 200,
+    buttons: { A:"k", B:"l", X:"j", Y:"i", MENU:"enter", VIEW:"z", SHARE:"f1", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"q", RB:"e", L3:"2", R3:"4", LT:"1", RT:"3" },
+    left_stick: { up:"w", down:"s", left:"a", right:"d" },
+    right_stick: { up:"t", down:"g", left:"f", right:"h" }
+  },
+  dolphin: {
+    right_stick_mode: "keys", deadzone: 9500, trigger_threshold: 200,
+    buttons: { A:"x", B:"z", X:"c", Y:"s", MENU:"enter", VIEW:"tab", SHARE:"f1", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"q", RB:"e", L3:"1", R3:"2", LT:"l", RT:"r" },
+    left_stick: { up:"w", down:"s", left:"a", right:"d" },
+    right_stick: { up:"i", down:"k", left:"j", right:"l" }
+  },
+  hollow: {
+    right_stick_mode: "keys", deadzone: 10000, trigger_threshold: 200,
+    buttons: { A:"z", B:"x", X:"c", Y:"a", MENU:"esc", VIEW:"tab", SHARE:"f12", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"q", RB:"f", L3:"s", R3:"d", LT:"shift", RT:"space" },
+    left_stick: { up:"up", down:"down", left:"left", right:"right" },
+    right_stick: { up:"up", down:"down", left:"left", right:"right" }
   }
 };
 
 let cfg = {};
 let lang = "en";
+let activeBindTarget = null;
 const MAIN_BTNS = ["A", "B", "X", "Y", "LB", "RB", "LT", "RT", "L3", "R3"];
 const DPAD_BTNS = ["UP", "DOWN", "LEFT", "RIGHT", "MENU", "VIEW", "SHARE"];
 const DIRS = ["up", "down", "left", "right"];
 
 function t(k) { return (I18N[lang] || I18N.en)[k] || k; }
 
+function showToast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.style.display = "block";
+  setTimeout(() => el.style.display = "none", 2400);
+}
+
 function applyLang() {
   document.documentElement.lang = lang;
   document.getElementById("langSelect").value = lang;
+  document.getElementById("optTplDefault").textContent = t("optTplDefault");
   document.getElementById("btnNew").textContent = t("newProf");
+  document.getElementById("btnExport").textContent = t("exportProf");
+  document.getElementById("btnImport").textContent = t("importProf");
   document.getElementById("btnDel").textContent = t("delProf");
   document.getElementById("btnSave").textContent = t("saveAll");
   document.getElementById("hSticks").textContent = t("hSticks");
@@ -212,7 +332,6 @@ function applyLang() {
   document.getElementById("hintAppRules").textContent = t("hintAppRules");
   document.getElementById("hCombos").textContent = t("hCombos");
   document.getElementById("hintCombos").textContent = t("hintCombos");
-  document.getElementById("toast").textContent = t("toastSaved");
 }
 
 function changeLang() {
@@ -263,6 +382,13 @@ function parseLinesToMap(text) {
   return out;
 }
 
+function renderProfileDeadzone() {
+  const dz = parseInt(document.getElementById("deadzone").value) || 10000;
+  const r = Math.min(28, Math.max(2, (dz / 32768) * 28));
+  document.getElementById("dz-L").setAttribute("r", r.toFixed(1));
+  document.getElementById("dz-R").setAttribute("r", r.toFixed(1));
+}
+
 function renderProfile() {
   const name = document.getElementById("profileSelect").value;
   cfg.active_profile = name;
@@ -279,6 +405,7 @@ function renderProfile() {
   renderKeyGroup("leftStickKeys", DIRS, p.left_stick);
   renderKeyGroup("rightStickKeys", DIRS, p.right_stick);
   toggleStickInputs();
+  renderProfileDeadzone();
 }
 
 function renderKeyGroup(elId, keys, obj) {
@@ -286,10 +413,51 @@ function renderKeyGroup(elId, keys, obj) {
   el.innerHTML = keys.map(k => `
     <div class="row">
       <label>${k.toUpperCase()}</label>
-      <input type="text" data-key="${k}" value="${obj[k] || ""}">
+      <div class="bind-wrap">
+        <input type="text" id="inp-${elId}-${k}" data-key="${k}" value="${obj[k] || ""}">
+        <button type="button" class="bind-btn" onclick="startBind(this, 'inp-${elId}-${k}')">${t("bindBtn")}</button>
+      </div>
     </div>
   `).join("");
 }
+
+function startBind(btnEl, inputId) {
+  if (activeBindTarget) {
+    activeBindTarget.btn.classList.remove("listening");
+    activeBindTarget.btn.textContent = t("bindBtn");
+  }
+  const inp = document.getElementById(inputId);
+  btnEl.classList.add("listening");
+  btnEl.textContent = t("bindWait");
+  activeBindTarget = { btn: btnEl, inp };
+}
+
+function mapDomKey(e) {
+  const map = {
+    " ": "space", "Enter": "enter", "Escape": "esc", "Tab": "tab",
+    "Backspace": "backspace", "ArrowUp": "up", "ArrowDown": "down",
+    "ArrowLeft": "left", "ArrowRight": "right", "PageUp": "page_up",
+    "PageDown": "page_down", "Shift": "shift", "Control": "ctrl",
+    "Meta": "cmd", "AudioVolumeUp": "vol_up", "AudioVolumeDown": "vol_down",
+    "AudioVolumeMute": "mute", "MediaPlayPause": "play_pause"
+  };
+  if (map[e.key]) return map[e.key];
+  if (/^F\\d{1,2}$/i.test(e.key)) return e.key.toLowerCase();
+  if (e.key.length === 1) return e.key.toLowerCase();
+  return null;
+}
+
+window.addEventListener("keydown", (e) => {
+  if (!activeBindTarget) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const mapped = mapDomKey(e);
+  if (!mapped) return;
+  activeBindTarget.inp.value = mapped;
+  activeBindTarget.btn.classList.remove("listening");
+  activeBindTarget.btn.textContent = t("bindBtn");
+  activeBindTarget = null;
+}, true);
 
 function toggleStickInputs() {
   const isMouse = document.getElementById("rightStickMode").value === "mouse";
@@ -319,6 +487,53 @@ function collectCurrentProfile() {
   cfg.language = lang;
   cfg.app_rules = parseLinesToMap(document.getElementById("appRules").value);
   cfg.combos = parseLinesToMap(document.getElementById("globalCombos").value);
+}
+
+function applyTemplate() {
+  const sel = document.getElementById("templateSelect");
+  const key = sel.value;
+  sel.value = "";
+  if (!key || !PRESETS[key]) return;
+  const name = prompt(t("promptNew"), key);
+  if (!name || !name.trim()) return;
+  const clean = name.trim();
+  cfg.profiles[clean] = JSON.parse(JSON.stringify(PRESETS[key]));
+  cfg.active_profile = clean;
+  populateSelect();
+  renderProfile();
+}
+
+function exportProfile() {
+  collectCurrentProfile();
+  const name = document.getElementById("profileSelect").value;
+  const blob = new Blob([JSON.stringify({ name, profile: cfg.profiles[name] }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `gamesir_${name}.json`;
+  a.click();
+}
+
+function importProfile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      const profObj = parsed.profile || parsed;
+      if (!profObj.buttons || !profObj.left_stick) throw new Error("Invalid");
+      const name = (parsed.name || file.name.replace(".json", "")).trim();
+      cfg.profiles[name] = profObj;
+      cfg.active_profile = name;
+      populateSelect();
+      renderProfile();
+      showToast(t("toastImported"));
+    } catch (err) {
+      alert("Invalid profile JSON");
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = "";
 }
 
 function createProfile() {
@@ -351,9 +566,7 @@ async function saveConfig() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(cfg)
   });
-  const tEl = document.getElementById("toast");
-  tEl.style.display = "block";
-  setTimeout(() => tEl.style.display = "none", 2200);
+  showToast(t("toastSaved"));
 }
 
 async function pollLive() {
@@ -361,23 +574,35 @@ async function pollLive() {
     const res = await fetch("/api/live");
     const live = await res.json();
     const st = document.getElementById("liveStatus");
-    const btns = document.getElementById("liveButtons");
     const sticks = document.getElementById("liveSticks");
+    const heldSet = new Set(live.held || []);
+
+    document.querySelectorAll("[id^='svg-']").forEach(el => {
+      const btnName = el.id.replace("svg-", "");
+      el.classList.toggle("active", heldSet.has(btnName));
+    });
+
     if (live.connected) {
       st.innerHTML = `<span style="color:var(--ok)">● ${live.connected}</span> (${live.profile})`;
-      btns.innerHTML = live.held && live.held.length
-        ? live.held.map(b => `<span class="pill">${b}</span>`).join("")
-        : `<span style="color:var(--muted)">${t("noBtns")}</span>`;
-      sticks.textContent = `LS: ${live.lx}, ${live.ly} | RS: ${live.rx}, ${live.ry} | LT:${live.lt} RT:${live.rt}`;
+      sticks.textContent = `LS: ${live.lx}, ${live.ly} | RS: ${live.rx}, ${live.ry} | LT: ${live.lt} RT: ${live.rt}`;
+      const lxOff = (live.lx / 32768) * 22;
+      const lyOff = -(live.ly / 32768) * 22;
+      const rxOff = (live.rx / 32768) * 22;
+      const ryOff = -(live.ry / 32768) * 22;
+      document.getElementById("dot-L").setAttribute("cx", (130 + lxOff).toFixed(1));
+      document.getElementById("dot-L").setAttribute("cy", (108 + lyOff).toFixed(1));
+      document.getElementById("dot-R").setAttribute("cx", (332 + rxOff).toFixed(1));
+      document.getElementById("dot-R").setAttribute("cy", (162 + ryOff).toFixed(1));
+      document.getElementById("bar-LT").setAttribute("width", Math.min(68, (live.lt / 1023) * 68).toFixed(1));
+      document.getElementById("bar-RT").setAttribute("width", Math.min(68, (live.rt / 1023) * 68).toFixed(1));
     } else {
       st.innerHTML = `<span style="color:var(--muted)">○ ${t("disconnected")}</span>`;
-      btns.innerHTML = "";
     }
   } catch (e) {}
 }
 
 load();
-setInterval(pollLive, 120);
+setInterval(pollLive, 90);
 </script>
 </body>
 </html>
