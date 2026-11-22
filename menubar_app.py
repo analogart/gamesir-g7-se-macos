@@ -424,7 +424,7 @@ class ControlPanel(NSObject):
         header_h = 62
         ax_h = 0 if ax_ok else 44
         prof_card_h = 34 + (len(profiles) * 34) + 8
-        prefs_card_h = 76
+        prefs_card_h = 88
         actions_h = 84
         footer_h = 56
 
@@ -572,8 +572,8 @@ class ControlPanel(NSObject):
         pref_box.addSubview_(pref_hdr)
 
         # Row 1: Auto-switch
-        lbl_as = make_label(14, 32, inner_w - 76, 18, self.ctrl.t("opt_autoswitch"), size=12.5)
-        sw_as = NSSwitch.alloc().initWithFrame_(NSMakeRect(inner_w - 54, 29, 40, 24))
+        lbl_as = make_label(14, 41, inner_w - 76, 18, self.ctrl.t("opt_autoswitch"), size=12.5)
+        sw_as = NSSwitch.alloc().initWithFrame_(NSMakeRect(inner_w - 56, 37, 40, 24))
         sw_as.setState_(1 if self.ctrl.bridge.cfg.get("auto_switch", True) else 0)
         sw_as.setTarget_(self)
         sw_as.setAction_("toggleAutoSwitch:")
@@ -581,8 +581,8 @@ class ControlPanel(NSObject):
         pref_box.addSubview_(sw_as)
 
         # Row 2: Rumble
-        lbl_rb = make_label(14, 8, inner_w - 76, 18, self.ctrl.t("opt_rumble"), size=12.5)
-        sw_rb = NSSwitch.alloc().initWithFrame_(NSMakeRect(inner_w - 54, 5, 40, 24))
+        lbl_rb = make_label(14, 12, inner_w - 76, 18, self.ctrl.t("opt_rumble"), size=12.5)
+        sw_rb = NSSwitch.alloc().initWithFrame_(NSMakeRect(inner_w - 56, 8, 40, 24))
         sw_rb.setState_(1 if self.ctrl.bridge.cfg.get("rumble_feedback", True) else 0)
         sw_rb.setTarget_(self)
         sw_rb.setAction_("toggleRumble:")
@@ -600,7 +600,7 @@ class ControlPanel(NSObject):
         ico_cfg = sf_symbol("slider.horizontal.3")
         if ico_cfg:
             cfg_btn.setImage_(ico_cfg)
-            cfg_btn.setImagePosition_(2)
+            cfg_btn.setImagePosition_(7)
         cfg_btn.setTarget_(self)
         cfg_btn.setAction_("openCfg:")
         content.addSubview_(cfg_btn)
@@ -612,7 +612,7 @@ class ControlPanel(NSObject):
         ico_rel = sf_symbol("arrow.clockwise")
         if ico_rel:
             rel_btn.setImage_(ico_rel)
-            rel_btn.setImagePosition_(2)
+            rel_btn.setImagePosition_(7)
         rel_btn.setTarget_(self)
         rel_btn.setAction_("reloadCfg:")
         content.addSubview_(rel_btn)
@@ -625,7 +625,7 @@ class ControlPanel(NSObject):
         ico_upd = sf_symbol("arrow.down.circle")
         if ico_upd:
             upd_btn.setImage_(ico_upd)
-            upd_btn.setImagePosition_(2)
+            upd_btn.setImagePosition_(7)
         upd_btn.setTarget_(self)
         upd_btn.setAction_("checkUpdates:")
         content.addSubview_(upd_btn)
@@ -655,7 +655,7 @@ class ControlPanel(NSObject):
         ico_quit = sf_symbol("power")
         if ico_quit:
             quit_btn.setImage_(ico_quit)
-            quit_btn.setImagePosition_(2)
+            quit_btn.setImagePosition_(7)
         quit_btn.setTarget_(self)
         quit_btn.setAction_("quitApp:")
         content.addSubview_(quit_btn)
