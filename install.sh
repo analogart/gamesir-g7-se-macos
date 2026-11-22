@@ -12,6 +12,7 @@ echo "Instalando dependências Python..."
 echo "Criando bundle nativo em $APP_DIR..."
 rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
+[ -f "$PROJECT_DIR/AppIcon.icns" ] && cp "$PROJECT_DIR/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
 
 cat << INFO > "$APP_DIR/Contents/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>
@@ -22,6 +23,8 @@ cat << INFO > "$APP_DIR/Contents/Info.plist"
     <string>GameSir Bridge</string>
     <key>CFBundleIdentifier</key>
     <string>com.analogart.gamesirbridge</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleName</key>
     <string>GameSir Bridge</string>
     <key>CFBundleVersion</key>

@@ -121,5 +121,6 @@
       "right_stick": {}
     }
   },
-  "mouse_curve": 2.2
+  "mouse_curve": 2.2,
+  "language": "en"
 }
