@@ -754,7 +754,15 @@ class GameSirAppDelegate(NSObject):
         self.nsapp.setDelegate_(self)
         return self
 
+    @objc.python_method
+    def _apply_dock_icon(self):
+        icns_path = str(get_resource_dir() / "AppIcon.icns")
+        icon = NSImage.alloc().initWithContentsOfFile_(icns_path)
+        if icon is not None:
+            self.nsapp.setApplicationIconImage_(icon)
+
     def applicationDidFinishLaunching_(self, _notif):
+        self._apply_dock_icon()
         self._timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
             0.15, self, "flushUiTimer:", None, True
         )
