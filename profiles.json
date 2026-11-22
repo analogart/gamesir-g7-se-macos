@@ -1,0 +1,125 @@
+{
+  "active_profile": "emulators",
+  "auto_switch": true,
+  "rumble_feedback": true,
+  "deadzone": 10000,
+  "mouse_speed": 12,
+  "app_rules": {
+    "pcsx2": "emulators",
+    "dolphin": "emulators",
+    "openemu": "emulators",
+    "retroarch": "emulators",
+    "steam": "mac_games",
+    "safari": "desktop_media",
+    "chrome": "desktop_media",
+    "finder": "desktop_media"
+  },
+  "combos": {
+    "VIEW+MENU": "cmd+q",
+    "LB+RB": "cmd+shift+3"
+  },
+  "profiles": {
+    "emulators": {
+      "description": "PCSX2, Dolphin, OpenEmu, RetroArch",
+      "right_stick_mode": "keys",
+      "buttons": {
+        "A": "k",
+        "B": "l",
+        "X": "j",
+        "Y": "i",
+        "MENU": "enter",
+        "VIEW": "z",
+        "SHARE": "f1",
+        "M1": "",
+        "M2": "",
+        "UP": "up",
+        "DOWN": "down",
+        "LEFT": "left",
+        "RIGHT": "right",
+        "LB": "q",
+        "RB": "e",
+        "L3": "2",
+        "R3": "4",
+        "LT": "1",
+        "RT": "3"
+      },
+      "left_stick": {
+        "up": "w",
+        "down": "s",
+        "left": "a",
+        "right": "d"
+      },
+      "right_stick": {
+        "up": "t",
+        "down": "g",
+        "left": "f",
+        "right": "h"
+      }
+    },
+    "mac_games": {
+      "description": "Mac / Steam / Browser Games",
+      "right_stick_mode": "mouse",
+      "buttons": {
+        "A": "space",
+        "B": "c",
+        "X": "r",
+        "Y": "e",
+        "MENU": "esc",
+        "VIEW": "tab",
+        "SHARE": "f12",
+        "M1": "shift",
+        "M2": "ctrl",
+        "UP": "1",
+        "DOWN": "2",
+        "LEFT": "3",
+        "RIGHT": "4",
+        "LB": "q",
+        "RB": "f",
+        "L3": "shift",
+        "R3": "ctrl",
+        "LT": "mouse_left",
+        "RT": "mouse_right"
+      },
+      "left_stick": {
+        "up": "w",
+        "down": "s",
+        "left": "a",
+        "right": "d"
+      },
+      "right_stick": {}
+    },
+    "desktop_media": {
+      "description": "Control macOS & Media from the couch",
+      "right_stick_mode": "mouse",
+      "buttons": {
+        "A": "enter",
+        "B": "esc",
+        "X": "play_pause",
+        "Y": "backspace",
+        "MENU": "enter",
+        "VIEW": "tab",
+        "SHARE": "mute",
+        "M1": "vol_down",
+        "M2": "vol_up",
+        "UP": "up",
+        "DOWN": "down",
+        "LEFT": "left",
+        "RIGHT": "right",
+        "LB": "page_up",
+        "RB": "page_down",
+        "L3": "f11",
+        "R3": "f12",
+        "LT": "mouse_left",
+        "RT": "mouse_right"
+      },
+      "left_stick": {
+        "up": "up",
+        "down": "down",
+        "left": "left",
+        "right": "right"
+      },
+      "right_stick": {}
+    }
+  },
+  "mouse_curve": 2.2
+}
