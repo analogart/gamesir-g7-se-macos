@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="assets/hud-panel.png" alt="GameSir Bridge Native macOS HUD" width="290" />
-  <img src="assets/configurator.jpg" alt="GameSir Bridge Visual Configurator" width="530" />
+  <img src="assets/configurator.png" alt="GameSir Bridge Visual Configurator" width="530" />
 </p>
 
 Userspace USB GIP (Gaming Input Protocol) driver, key/mouse mapper, and native macOS HUD app for **GameSir G7 SE**, **GameSir G7**, **GameSir G7 HE**, and **GameSir T4 Kaleid** on Apple Silicon & Intel Macs.
