@@ -39,7 +39,10 @@ from AppKit import (
     NSApplication,
     NSApplicationActivationPolicyRegular,
     NSBackingStoreBuffered,
+    NSBezelStyleRegularSquare,
     NSBezelStyleRounded,
+    NSBox,
+    NSBoxCustom,
     NSButton,
     NSColor,
     NSFloatingWindowLevel,
@@ -49,7 +52,12 @@ from AppKit import (
     NSMenu,
     NSMenuItem,
     NSScreen,
+    NSSegmentedControl,
+    NSSegmentStyleRounded,
+    NSSwitch,
     NSTextAlignmentCenter,
+    NSTextAlignmentLeft,
+    NSTextAlignmentRight,
     NSTextField,
     NSVisualEffectBlendingModeBehindWindow,
     NSVisualEffectMaterialHUDWindow,
@@ -77,14 +85,19 @@ from gamesir_bridge import GameSirBridge
 STRINGS = {
     "pt": {
         "searching": "Procurando controle USB...",
-        "connected": "Conectado: {}",
+        "connected": "{}",
+        "sub_searching": "Conecte um GameSir via USB",
+        "sub_connected": "Driver USB GIP ativo",
         "osd_profile": "Perfil: {}",
+        "sec_profiles": "PERFIL ATIVO",
+        "sec_options": "PREFERÊNCIAS RÁPIDAS",
+        "opt_autoswitch": "Troca automática por app",
+        "opt_rumble": "Vibração ao trocar perfil",
         "config_ui": "Configurar Botões (App Visual)",
-        "reload": "Recarregar Configurações",
-        "check_updates": "Verificar Atualizações",
+        "reload": "Recarregar",
+        "check_updates": "Atualizações",
         "open_panel": "Abrir Painel de Controle",
-        "quit": "Encerrar Bridge",
-        "ax_warn": "Permissão de Acessibilidade pendente",
+        "quit": "Encerrar",
         "ax_fix": "Conceder Permissão de Acessibilidade",
         "upd_title": "Atualizações — GameSir Bridge",
         "upd_latest": "Você já está na versão mais recente ({}).",
@@ -92,18 +105,23 @@ STRINGS = {
         "upd_err": "Não foi possível verificar atualizações agora.",
         "upd_open": "Abrir GitHub",
         "upd_ok": "OK",
-        "hint": "Fechar no X mantém o bridge ativo em segundo plano.\nAtalhos: VIEW + ▲ (Painel) | VIEW + ▼ (Perfil)",
+        "hint": "VIEW + ▲ Perfil   •   VIEW + ▼ Painel   •   X mantém em 2º plano",
     },
     "en": {
-        "searching": "Searching for USB controller...",
-        "connected": "Connected: {}",
+        "searching": "Searching for controller...",
+        "connected": "{}",
+        "sub_searching": "Connect a GameSir controller via USB",
+        "sub_connected": "USB GIP driver active",
         "osd_profile": "Profile: {}",
+        "sec_profiles": "ACTIVE PROFILE",
+        "sec_options": "QUICK PREFERENCES",
+        "opt_autoswitch": "Auto-switch by active app",
+        "opt_rumble": "Rumble feedback on switch",
         "config_ui": "Configure Buttons (Visual App)",
-        "reload": "Reload Configuration",
-        "check_updates": "Check for Updates",
+        "reload": "Reload",
+        "check_updates": "Updates",
         "open_panel": "Open Control Panel",
-        "quit": "Quit Bridge",
-        "ax_warn": "Accessibility permission required",
+        "quit": "Quit",
         "ax_fix": "Grant Accessibility Permission",
         "upd_title": "Updates — GameSir Bridge",
         "upd_latest": "You are running the latest version ({}).",
@@ -111,18 +129,23 @@ STRINGS = {
         "upd_err": "Could not check for updates right now.",
         "upd_open": "Open GitHub",
         "upd_ok": "OK",
-        "hint": "Closing with X keeps the bridge running in background.\nShortcuts: VIEW + ▲ (Panel) | VIEW + ▼ (Profile)",
+        "hint": "VIEW + ▲ Profile   •   VIEW + ▼ Panel   •   X keeps running",
     },
     "es": {
         "searching": "Buscando control USB...",
-        "connected": "Conectado: {}",
+        "connected": "{}",
+        "sub_searching": "Conecta un mando GameSir por USB",
+        "sub_connected": "Controlador USB GIP activo",
         "osd_profile": "Perfil: {}",
+        "sec_profiles": "PERFIL ACTIVO",
+        "sec_options": "PREFERENCIAS RÁPIDAS",
+        "opt_autoswitch": "Cambio automático por app",
+        "opt_rumble": "Vibración al cambiar perfil",
         "config_ui": "Configurar Botones (App Visual)",
-        "reload": "Recargar Configuración",
-        "check_updates": "Buscar Actualizaciones",
+        "reload": "Recargar",
+        "check_updates": "Actualizaciones",
         "open_panel": "Abrir Panel de Control",
-        "quit": "Cerrar Bridge",
-        "ax_warn": "Permiso de Accesibilidad pendiente",
+        "quit": "Cerrar",
         "ax_fix": "Conceder Permiso de Accesibilidad",
         "upd_title": "Actualizaciones — GameSir Bridge",
         "upd_latest": "Ya tienes la versión más reciente ({}).",
@@ -130,11 +153,24 @@ STRINGS = {
         "upd_err": "No se pudieron comprobar actualizaciones ahora.",
         "upd_open": "Abrir GitHub",
         "upd_ok": "OK",
-        "hint": "Cerrar con X mantiene el bridge activo en segundo plano.\nAtajos: VIEW + ▲ (Panel) | VIEW + ▼ (Perfil)",
+        "hint": "VIEW + ▲ Perfil   •   VIEW + ▼ Panel   •   X sigue en 2º plano",
     },
 }
 
-LANG_LABELS = [("pt", "Português"), ("en", "English"), ("es", "Español")]
+LANG_CODES = ["pt", "en", "es"]
+LANG_NAMES = ["PT", "EN", "ES"]
+
+
+def sf_symbol(name: str, fallback: str = None):
+    if hasattr(NSImage, "imageWithSystemSymbolName_accessibilityDescription_"):
+        img = NSImage.imageWithSystemSymbolName_accessibilityDescription_(name, None)
+        if img is not None:
+            return img
+        if fallback:
+            return NSImage.imageWithSystemSymbolName_accessibilityDescription_(
+                fallback, None
+            )
+    return None
 
 
 def is_accessibility_trusted():
@@ -158,6 +194,32 @@ def detect_lang(cfg):
     if loc.startswith("es"):
         return "es"
     return "en"
+
+
+def make_card_box(x, y, w, h):
+    box = NSBox.alloc().initWithFrame_(NSMakeRect(x, y, w, h))
+    box.setBoxType_(NSBoxCustom)
+    box.setCornerRadius_(12.0)
+    box.setBorderWidth_(1.0)
+    box.setBorderColor_(NSColor.colorWithWhite_alpha_(1.0, 0.10))
+    box.setFillColor_(NSColor.colorWithWhite_alpha_(1.0, 0.055))
+    box.setTitlePosition_(0)  # NSNoTitle
+    return box
+
+
+def make_label(x, y, w, h, text, size=13.0, bold=False, color=None, align=NSTextAlignmentLeft):
+    lbl = NSTextField.alloc().initWithFrame_(NSMakeRect(x, y, w, h))
+    lbl.setStringValue_(text)
+    lbl.setBezeled_(False)
+    lbl.setDrawsBackground_(False)
+    lbl.setEditable_(False)
+    lbl.setSelectable_(False)
+    lbl.setAlignment_(align)
+    lbl.setFont_(
+        NSFont.boldSystemFontOfSize_(size) if bold else NSFont.systemFontOfSize_(size)
+    )
+    lbl.setTextColor_(color or NSColor.labelColor())
+    return lbl
 
 
 class ProfileOSD(NSObject):
@@ -201,16 +263,16 @@ class ProfileOSD(NSObject):
         fx.setState_(NSVisualEffectStateActive)
         win.setContentView_(fx)
 
-        lbl = NSTextField.alloc().initWithFrame_(NSMakeRect(12, 11, w - 24, 30))
-        lbl.setStringValue_(label_text)
-        lbl.setBezeled_(False)
-        lbl.setDrawsBackground_(False)
-        lbl.setEditable_(False)
-        lbl.setSelectable_(False)
-        lbl.setTextColor_(NSColor.labelColor())
-        lbl.setFont_(NSFont.boldSystemFontOfSize_(16.0))
-        lbl.setAlignment_(NSTextAlignmentCenter)
-
+        lbl = make_label(
+            12,
+            11,
+            w - 24,
+            30,
+            label_text,
+            size=16.0,
+            bold=True,
+            align=NSTextAlignmentCenter,
+        )
         fx.addSubview_(lbl)
         win.orderFrontRegardless()
         self.win = win
@@ -269,7 +331,7 @@ class ConfigWebWindow(NSObject):
             wv = WKWebView.alloc().initWithFrame_configuration_(
                 NSMakeRect(0, 0, w, h), cfg
             )
-            wv.setAutoresizingMask_(18)  # Width + Height sizable
+            wv.setAutoresizingMask_(18)
             win.setContentView_(wv)
             self.win = win
             self.webview = wv
@@ -287,7 +349,9 @@ class ControlPanel(NSObject):
             return None
         self.ctrl = ctrl
         self.win = None
-        self.status_lbl = None
+        self.status_dot = None
+        self.status_title = None
+        self.status_sub = None
         self.profile_buttons = {}
         return self
 
@@ -308,18 +372,37 @@ class ControlPanel(NSObject):
 
     @objc.python_method
     def sync_ui(self):
-        if self.status_lbl is not None:
+        if self.status_title is not None:
             if self.ctrl.last_device:
-                self.status_lbl.setStringValue_(
-                    f"● {self.ctrl.t('connected').format(self.ctrl.last_device)}"
+                self.status_dot.setStringValue_("●")
+                self.status_dot.setTextColor_(NSColor.systemGreenColor())
+                self.status_title.setStringValue_(
+                    self.ctrl.t("connected").format(self.ctrl.last_device)
                 )
-                self.status_lbl.setTextColor_(NSColor.systemGreenColor())
+                self.status_sub.setStringValue_(self.ctrl.t("sub_connected"))
             else:
-                self.status_lbl.setStringValue_(f"○ {self.ctrl.t('searching')}")
-                self.status_lbl.setTextColor_(NSColor.labelColor())
+                self.status_dot.setStringValue_("○")
+                self.status_dot.setTextColor_(NSColor.secondaryLabelColor())
+                self.status_title.setStringValue_(self.ctrl.t("searching"))
+                self.status_sub.setStringValue_(self.ctrl.t("sub_searching"))
+
         for prof_name, btn in self.profile_buttons.items():
             active = prof_name == self.ctrl.bridge.current_profile
-            btn.setTitle_(f"✓ {prof_name}" if active else prof_name)
+            btn.setState_(1 if active else 0)
+            if active:
+                btn.setTitle_(f"  {prof_name}")
+                ico = sf_symbol("checkmark.circle.fill")
+                if ico:
+                    btn.setImage_(ico)
+                    btn.setImagePosition_(2)  # NSImageLeft
+                btn.setContentTintColor_(NSColor.controlAccentColor())
+            else:
+                btn.setTitle_(f"  {prof_name}")
+                ico = sf_symbol("circle")
+                if ico:
+                    btn.setImage_(ico)
+                    btn.setImagePosition_(2)
+                btn.setContentTintColor_(NSColor.secondaryLabelColor())
 
     @objc.python_method
     def show(self):
@@ -333,9 +416,33 @@ class ControlPanel(NSObject):
         frame = screen.frame()
         profiles = list(self.ctrl.bridge.cfg.get("profiles", {}).keys())
         ax_ok = is_accessibility_trusted()
-        extra_ax_h = 0 if ax_ok else 44
-        w = 390
-        h = 338 + (len(profiles) * 38) + extra_ax_h
+
+        pad = 20
+        w = 400
+        inner_w = w - (pad * 2)
+
+        header_h = 62
+        ax_h = 0 if ax_ok else 44
+        prof_card_h = 34 + (len(profiles) * 34) + 8
+        prefs_card_h = 76
+        actions_h = 84
+        footer_h = 56
+
+        h = (
+            44  # titlebar clearance
+            + header_h
+            + (ax_h + 10 if ax_h else 0)
+            + 12
+            + prof_card_h
+            + 12
+            + prefs_card_h
+            + 14
+            + actions_h
+            + 12
+            + footer_h
+            + 16
+        )
+
         x = (frame.size.width - w) / 2.0
         y = (frame.size.height - h) / 2.0
 
@@ -348,7 +455,7 @@ class ControlPanel(NSObject):
             NSBackingStoreBuffered,
             False,
         )
-        win.setTitle_(f"GameSir Bridge {APP_VERSION}")
+        win.setTitle_("")
         win.setTitlebarAppearsTransparent_(True)
         win.setOpaque_(False)
         win.setBackgroundColor_(NSColor.clearColor())
@@ -362,81 +469,210 @@ class ControlPanel(NSObject):
         content.setState_(NSVisualEffectStateActive)
         win.setContentView_(content)
 
-        self.status_lbl = NSTextField.alloc().initWithFrame_(
-            NSMakeRect(20, h - 62, w - 40, 24)
+        # Version pill in top-right
+        ver_lbl = make_label(
+            w - pad - 70,
+            h - 32,
+            70,
+            18,
+            APP_VERSION,
+            size=11.0,
+            bold=True,
+            color=NSColor.secondaryLabelColor(),
+            align=NSTextAlignmentRight,
         )
-        self.status_lbl.setBezeled_(False)
-        self.status_lbl.setDrawsBackground_(False)
-        self.status_lbl.setEditable_(False)
-        self.status_lbl.setSelectable_(False)
-        self.status_lbl.setFont_(NSFont.boldSystemFontOfSize_(14.0))
-        self.status_lbl.setAlignment_(NSTextAlignmentCenter)
-        content.addSubview_(self.status_lbl)
+        content.addSubview_(ver_lbl)
 
-        cur_y = h - 104
+        cur_y = h - 44 - header_h
+
+        # 1. Hardware Status Card
+        hdr_box = make_card_box(pad, cur_y, inner_w, header_h)
+        content.addSubview_(hdr_box)
+
+        self.status_dot = make_label(
+            14, 21, 20, 22, "○", size=15.0, bold=True, align=NSTextAlignmentCenter
+        )
+        self.status_title = make_label(38, 28, inner_w - 52, 20, "", size=14.0, bold=True)
+        self.status_sub = make_label(
+            38,
+            10,
+            inner_w - 52,
+            16,
+            "",
+            size=11.5,
+            color=NSColor.secondaryLabelColor(),
+        )
+        hdr_box.addSubview_(self.status_dot)
+        hdr_box.addSubview_(self.status_title)
+        hdr_box.addSubview_(self.status_sub)
+
         if not ax_ok:
-            ax_btn = NSButton.alloc().initWithFrame_(NSMakeRect(30, cur_y, w - 60, 32))
-            ax_btn.setTitle_(f"⚠ {self.ctrl.t('ax_fix')}")
+            cur_y -= ax_h + 10
+            ax_btn = NSButton.alloc().initWithFrame_(NSMakeRect(pad, cur_y, inner_w, 34))
+            ax_btn.setTitle_(f"  {self.ctrl.t('ax_fix')}")
             ax_btn.setBezelStyle_(NSBezelStyleRounded)
+            ax_btn.setContentTintColor_(NSColor.systemOrangeColor())
+            ico = sf_symbol("exclamationmark.triangle.fill")
+            if ico:
+                ax_btn.setImage_(ico)
+                ax_btn.setImagePosition_(2)
             ax_btn.setTarget_(self)
             ax_btn.setAction_("openAccessibility:")
             content.addSubview_(ax_btn)
-            cur_y -= 42
+
+        # 2. Profiles Card
+        cur_y -= 12 + prof_card_h
+        prof_box = make_card_box(pad, cur_y, inner_w, prof_card_h)
+        content.addSubview_(prof_box)
+
+        sec_lbl = make_label(
+            14,
+            prof_card_h - 24,
+            inner_w - 28,
+            15,
+            self.ctrl.t("sec_profiles"),
+            size=10.5,
+            bold=True,
+            color=NSColor.secondaryLabelColor(),
+        )
+        prof_box.addSubview_(sec_lbl)
 
         self.profile_buttons = {}
+        py = prof_card_h - 60
         for prof_name in profiles:
-            btn = NSButton.alloc().initWithFrame_(NSMakeRect(30, cur_y, w - 60, 32))
-            btn.setBezelStyle_(NSBezelStyleRounded)
+            btn = NSButton.alloc().initWithFrame_(
+                NSMakeRect(12, py, inner_w - 24, 28)
+            )
+            btn.setBezelStyle_(NSBezelStyleRegularSquare)
+            btn.setBordered_(False)
+            btn.setAlignment_(NSTextAlignmentLeft)
+            btn.setFont_(NSFont.systemFontOfSize_(13.5))
             btn.setTarget_(self)
             btn.setAction_("selectProf:")
             btn.setIdentifier_(prof_name)
-            content.addSubview_(btn)
+            prof_box.addSubview_(btn)
             self.profile_buttons[prof_name] = btn
-            cur_y -= 38
+            py -= 34
 
-        self.sync_ui()
+        # 3. Quick Preferences Card
+        cur_y -= 12 + prefs_card_h
+        pref_box = make_card_box(pad, cur_y, inner_w, prefs_card_h)
+        content.addSubview_(pref_box)
 
-        cur_y -= 10
-        for title, sel in [
-            (self.ctrl.t("config_ui"), "openCfg:"),
-            (self.ctrl.t("reload"), "reloadCfg:"),
-            (self.ctrl.t("check_updates"), "checkUpdates:"),
-            (self.ctrl.t("quit"), "quitApp:"),
-        ]:
-            btn = NSButton.alloc().initWithFrame_(NSMakeRect(30, cur_y, w - 60, 32))
-            btn.setTitle_(title)
-            btn.setBezelStyle_(NSBezelStyleRounded)
-            btn.setTarget_(self)
-            btn.setAction_(sel)
-            content.addSubview_(btn)
-            cur_y -= 38
+        pref_hdr = make_label(
+            14,
+            prefs_card_h - 22,
+            inner_w - 28,
+            15,
+            self.ctrl.t("sec_options"),
+            size=10.5,
+            bold=True,
+            color=NSColor.secondaryLabelColor(),
+        )
+        pref_box.addSubview_(pref_hdr)
 
-        cur_y -= 6
-        btn_w = (w - 72) / 3.0
-        for idx, (code, label) in enumerate(LANG_LABELS):
-            prefix = "• " if code == self.ctrl.lang else ""
-            lbtn = NSButton.alloc().initWithFrame_(
-                NSMakeRect(30 + idx * (btn_w + 6), cur_y, btn_w, 26)
-            )
-            lbtn.setTitle_(f"{prefix}{label}")
-            lbtn.setBezelStyle_(NSBezelStyleRounded)
-            lbtn.setTarget_(self)
-            lbtn.setAction_("selectLang:")
-            lbtn.setIdentifier_(code)
-            content.addSubview_(lbtn)
+        # Row 1: Auto-switch
+        lbl_as = make_label(14, 32, inner_w - 76, 18, self.ctrl.t("opt_autoswitch"), size=12.5)
+        sw_as = NSSwitch.alloc().initWithFrame_(NSMakeRect(inner_w - 54, 29, 40, 24))
+        sw_as.setState_(1 if self.ctrl.bridge.cfg.get("auto_switch", True) else 0)
+        sw_as.setTarget_(self)
+        sw_as.setAction_("toggleAutoSwitch:")
+        pref_box.addSubview_(lbl_as)
+        pref_box.addSubview_(sw_as)
 
-        cur_y -= 42
-        hint = NSTextField.alloc().initWithFrame_(NSMakeRect(16, cur_y, w - 32, 34))
-        hint.setStringValue_(self.ctrl.t("hint"))
-        hint.setBezeled_(False)
-        hint.setDrawsBackground_(False)
-        hint.setEditable_(False)
-        hint.setSelectable_(False)
-        hint.setTextColor_(NSColor.secondaryLabelColor())
-        hint.setFont_(NSFont.systemFontOfSize_(11.0))
-        hint.setAlignment_(NSTextAlignmentCenter)
+        # Row 2: Rumble
+        lbl_rb = make_label(14, 8, inner_w - 76, 18, self.ctrl.t("opt_rumble"), size=12.5)
+        sw_rb = NSSwitch.alloc().initWithFrame_(NSMakeRect(inner_w - 54, 5, 40, 24))
+        sw_rb.setState_(1 if self.ctrl.bridge.cfg.get("rumble_feedback", True) else 0)
+        sw_rb.setTarget_(self)
+        sw_rb.setAction_("toggleRumble:")
+        pref_box.addSubview_(lbl_rb)
+        pref_box.addSubview_(sw_rb)
+
+        # 4. Primary Action + Secondary 2-Col Row
+        cur_y -= 14 + actions_h
+        cfg_btn = NSButton.alloc().initWithFrame_(
+            NSMakeRect(pad, cur_y + 44, inner_w, 36)
+        )
+        cfg_btn.setTitle_(f"  {self.ctrl.t('config_ui')}")
+        cfg_btn.setBezelStyle_(NSBezelStyleRounded)
+        cfg_btn.setKeyEquivalent_("\r")  # Native macOS blue accent button
+        ico_cfg = sf_symbol("slider.horizontal.3")
+        if ico_cfg:
+            cfg_btn.setImage_(ico_cfg)
+            cfg_btn.setImagePosition_(2)
+        cfg_btn.setTarget_(self)
+        cfg_btn.setAction_("openCfg:")
+        content.addSubview_(cfg_btn)
+
+        half_w = (inner_w - 10) / 2.0
+        rel_btn = NSButton.alloc().initWithFrame_(NSMakeRect(pad, cur_y, half_w, 32))
+        rel_btn.setTitle_(f" {self.ctrl.t('reload')}")
+        rel_btn.setBezelStyle_(NSBezelStyleRounded)
+        ico_rel = sf_symbol("arrow.clockwise")
+        if ico_rel:
+            rel_btn.setImage_(ico_rel)
+            rel_btn.setImagePosition_(2)
+        rel_btn.setTarget_(self)
+        rel_btn.setAction_("reloadCfg:")
+        content.addSubview_(rel_btn)
+
+        upd_btn = NSButton.alloc().initWithFrame_(
+            NSMakeRect(pad + half_w + 10, cur_y, half_w, 32)
+        )
+        upd_btn.setTitle_(f" {self.ctrl.t('check_updates')}")
+        upd_btn.setBezelStyle_(NSBezelStyleRounded)
+        ico_upd = sf_symbol("arrow.down.circle")
+        if ico_upd:
+            upd_btn.setImage_(ico_upd)
+            upd_btn.setImagePosition_(2)
+        upd_btn.setTarget_(self)
+        upd_btn.setAction_("checkUpdates:")
+        content.addSubview_(upd_btn)
+
+        # 5. Footer: Language Segmented Control + Quit + Shortcut Hint
+        cur_y -= 12 + footer_h
+        seg = NSSegmentedControl.alloc().initWithFrame_(
+            NSMakeRect(pad, cur_y + 26, 156, 26)
+        )
+        seg.setSegmentCount_(3)
+        seg.setSegmentStyle_(NSSegmentStyleRounded)
+        for idx, name in enumerate(LANG_NAMES):
+            seg.setLabel_forSegment_(name, idx)
+            seg.setWidth_forSegment_(50, idx)
+        if self.ctrl.lang in LANG_CODES:
+            seg.setSelectedSegment_(LANG_CODES.index(self.ctrl.lang))
+        seg.setTarget_(self)
+        seg.setAction_("selectLangSeg:")
+        content.addSubview_(seg)
+
+        quit_btn = NSButton.alloc().initWithFrame_(
+            NSMakeRect(w - pad - 110, cur_y + 25, 110, 28)
+        )
+        quit_btn.setTitle_(f" {self.ctrl.t('quit')}")
+        quit_btn.setBezelStyle_(NSBezelStyleRounded)
+        quit_btn.setContentTintColor_(NSColor.systemRedColor())
+        ico_quit = sf_symbol("power")
+        if ico_quit:
+            quit_btn.setImage_(ico_quit)
+            quit_btn.setImagePosition_(2)
+        quit_btn.setTarget_(self)
+        quit_btn.setAction_("quitApp:")
+        content.addSubview_(quit_btn)
+
+        hint = make_label(
+            pad,
+            cur_y,
+            inner_w,
+            16,
+            self.ctrl.t("hint"),
+            size=10.5,
+            color=NSColor.secondaryLabelColor(),
+            align=NSTextAlignmentCenter,
+        )
         content.addSubview_(hint)
 
+        self.sync_ui()
         NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
         win.makeKeyAndOrderFront_(None)
         self.win = win
@@ -453,9 +689,20 @@ class ControlPanel(NSObject):
         self.ctrl.bridge.set_profile(sender.identifier(), vibrate=True, show_osd=True)
         self.sync_ui()
 
-    def selectLang_(self, sender):
-        self.ctrl.set_language(sender.identifier())
-        self.show()
+    def toggleAutoSwitch_(self, sender):
+        self.ctrl.set_pref("auto_switch", bool(sender.state() == 1))
+
+    def toggleRumble_(self, sender):
+        val = bool(sender.state() == 1)
+        self.ctrl.set_pref("rumble_feedback", val)
+        if val:
+            self.ctrl.bridge.rumble(45, 10)
+
+    def selectLangSeg_(self, sender):
+        idx = sender.selectedSegment()
+        if 0 <= idx < len(LANG_CODES):
+            self.ctrl.set_language(LANG_CODES[idx])
+            self.show()
 
     def openCfg_(self, _sender):
         self.ctrl.open_config_ui()
@@ -521,9 +768,7 @@ class GameSirAppDelegate(NSObject):
     def applicationDockMenu_(self, _sender):
         menu = NSMenu.alloc().init()
         status_title = (
-            self.t("connected").format(self.last_device)
-            if self.last_device
-            else self.t("searching")
+            self.last_device if self.last_device else self.t("searching")
         )
         st_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             status_title, None, ""
@@ -612,9 +857,7 @@ class GameSirAppDelegate(NSObject):
         self.open_config_ui()
 
     @objc.python_method
-    def set_language(self, code):
-        self.lang = code
-        self.bridge.cfg["language"] = code
+    def _save_cfg(self):
         try:
             get_config_path().write_text(
                 json.dumps(self.bridge.cfg, indent=2, ensure_ascii=False),
@@ -622,6 +865,17 @@ class GameSirAppDelegate(NSObject):
             )
         except Exception:
             pass
+
+    @objc.python_method
+    def set_pref(self, key, value):
+        self.bridge.cfg[key] = value
+        self._save_cfg()
+
+    @objc.python_method
+    def set_language(self, code):
+        self.lang = code
+        self.bridge.cfg["language"] = code
+        self._save_cfg()
         self._setup_top_left_menu()
 
     @objc.python_method
