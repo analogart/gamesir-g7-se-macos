@@ -22,21 +22,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GameSir Bridge v6.0 — Visual Configurator</title>
 <style>
-  :root { --bg: #0c0e12; --card: #161922; --border: #262b38; --accent: #3b82f6; --ok: #10b981; --warn: #f59e0b; --danger: #ef4444; --text: #f3f4f6; --muted: #9ca3af; }
+  :root { --bg: #0c0e12; --card: #161922; --border: #262b38; --accent: #3b82f6; --shift: #a855f7; --ok: #10b981; --warn: #f59e0b; --danger: #ef4444; --text: #f3f4f6; --muted: #9ca3af; }
   body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 22px; }
-  .container { max-width: 1080px; margin: 0 auto; }
+  .container { max-width: 1120px; margin: 0 auto; }
   header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 14px; gap: 10px; flex-wrap: wrap; }
   h1 { font-size: 21px; margin: 0; display: flex; align-items: center; gap: 8px; }
   .badge { font-size: 11px; background: rgba(59,130,246,0.2); color: var(--accent); padding: 2px 8px; border-radius: 99px; border: 1px solid rgba(59,130,246,0.4); }
   .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  select, input, textarea, button { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 7px 11px; font-size: 13px; font-family: inherit; }
+  select, input[type="text"], input[type="number"], textarea, button { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 7px 11px; font-size: 13px; font-family: inherit; }
   button { cursor: pointer; font-weight: 600; transition: 0.15s; }
   button:hover { border-color: #4b5563; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.shift-active { background: var(--shift); border-color: var(--shift); color: #fff; }
   button.danger { background: rgba(239,68,68,0.14); border-color: var(--danger); color: var(--danger); }
   .visualizer-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 18px; display: flex; flex-direction: column; align-items: center; }
   .vis-header { width: 100%; display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
-  svg.pad { width: 100%; max-width: 540px; height: auto; user-select: none; }
+  .vis-actions { display: flex; gap: 8px; align-items: center; }
+  svg.pad { width: 100%; max-width: 520px; height: auto; user-select: none; }
   .pad-body { fill: #1e222d; stroke: #333a4d; stroke-width: 2.5; }
   .pad-btn { fill: #282e3d; stroke: #465069; stroke-width: 1.5; transition: fill 0.06s; }
   .pad-btn.active { fill: var(--accent); stroke: #93c5fd; filter: drop-shadow(0 0 6px rgba(59,130,246,0.8)); }
@@ -46,15 +48,19 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .stick-dot { fill: var(--ok); stroke: #fff; stroke-width: 1.5; }
   .trig-bg { fill: #12151c; stroke: #3b4254; stroke-width: 1.5; rx: 4; }
   .trig-fill { fill: var(--accent); rx: 3; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(305px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .layer-bar { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(335px, 1fr)); gap: 16px; margin-bottom: 20px; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
-  .card h2 { font-size: 13px; margin: 0 0 14px 0; color: var(--accent); text-transform: uppercase; letter-spacing: 0.6px; }
-  .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; gap: 8px; }
+  .card h2 { font-size: 13px; margin: 0 0 14px 0; color: var(--accent); text-transform: uppercase; letter-spacing: 0.6px; display: flex; justify-content: space-between; align-items: center; }
+  .card.shift-mode h2 { color: var(--shift); }
+  .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; gap: 6px; }
   .row label { font-size: 13px; color: var(--muted); flex: 1; }
-  .row input, .row select { width: 125px; text-align: center; }
-  .bind-wrap { display: flex; gap: 5px; align-items: center; }
-  .bind-btn { padding: 6px 8px; font-size: 11px; color: var(--muted); }
+  .row input[type="text"], .row input[type="number"], .row select { width: 112px; text-align: center; }
+  .bind-wrap { display: flex; gap: 4px; align-items: center; }
+  .bind-btn { padding: 5px 7px; font-size: 11px; color: var(--muted); }
   .bind-btn.listening { background: var(--warn); color: #000; border-color: var(--warn); animation: pulse 1s infinite; }
+  .flag-pill { display: inline-flex; align-items: center; gap: 2px; font-size: 10px; font-weight: 700; color: var(--muted); background: #10131a; border: 1px solid var(--border); padding: 4px 6px; border-radius: 6px; cursor: pointer; user-select: none; }
+  .flag-pill input { margin: 0; accent-color: var(--accent); cursor: pointer; }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.65; } }
   textarea { width: 100%; box-sizing: border-box; min-height: 92px; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; line-height: 1.5; }
   .hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
@@ -90,10 +96,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div class="visualizer-card">
     <div class="vis-header">
       <div id="liveStatus">○ Waiting for controller...</div>
-      <div id="liveSticks" style="color: var(--muted); font-family: monospace;">LS: 0, 0 | RS: 0, 0 | LT: 0 RT: 0</div>
+      <div class="vis-actions">
+        <span id="liveSticks" style="color: var(--muted); font-family: monospace;">LS: 0, 0 | RS: 0, 0 | LT: 0 RT: 0</span>
+        <button id="btnCalibrate" onclick="calibrateZeroDrift()">🎯 Zero-Drift</button>
+        <button id="btnResetCal" onclick="resetZeroDrift()" title="Reset calibration">↺</button>
+      </div>
     </div>
     <svg class="pad" viewBox="0 0 520 260">
-      <!-- Triggers -->
       <rect x="85" y="12" width="70" height="14" class="trig-bg"/>
       <rect id="bar-LT" x="86" y="13" width="0" height="12" class="trig-fill"/>
       <text x="65" y="19" class="pad-txt">LT</text>
@@ -102,16 +111,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <rect id="bar-RT" x="366" y="13" width="0" height="12" class="trig-fill"/>
       <text x="455" y="19" class="pad-txt">RT</text>
 
-      <!-- Bumpers -->
       <rect id="svg-LB" x="75" y="34" width="90" height="20" rx="8" class="pad-btn"/>
       <text x="120" y="44" class="pad-txt">LB</text>
       <rect id="svg-RB" x="355" y="34" width="90" height="20" rx="8" class="pad-btn"/>
       <text x="400" y="44" class="pad-txt">RB</text>
 
-      <!-- Shell -->
       <path d="M90,56 L430,56 C468,56 492,115 486,185 C482,226 452,244 432,232 C406,216 392,185 352,185 L168,185 C128,185 114,216 88,232 C68,244 38,226 34,185 C28,115 52,56 90,56 Z" class="pad-body"/>
 
-      <!-- Center Buttons -->
       <rect id="svg-VIEW" x="212" y="96" width="24" height="14" rx="7" class="pad-btn"/>
       <text x="224" y="85" class="pad-txt">VIEW</text>
       <rect id="svg-MENU" x="284" y="96" width="24" height="14" rx="7" class="pad-btn"/>
@@ -119,12 +125,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <rect id="svg-SHARE" x="248" y="122" width="24" height="14" rx="7" class="pad-btn"/>
       <text x="260" y="146" class="pad-txt">SHARE</text>
 
-      <!-- Left Stick + L3 -->
       <circle id="svg-L3" cx="130" cy="108" r="30" class="stick-well"/>
       <circle id="dz-L" cx="130" cy="108" r="10" class="dz-ring"/>
       <circle id="dot-L" cx="130" cy="108" r="6" class="stick-dot"/>
 
-      <!-- D-Pad -->
       <rect id="svg-UP" x="178" y="136" width="20" height="20" rx="4" class="pad-btn"/>
       <text x="188" y="146" class="pad-txt">↑</text>
       <rect id="svg-DOWN" x="178" y="176" width="20" height="20" rx="4" class="pad-btn"/>
@@ -134,12 +138,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <rect id="svg-RIGHT" x="198" y="156" width="20" height="20" rx="4" class="pad-btn"/>
       <text x="208" y="166" class="pad-txt">→</text>
 
-      <!-- Right Stick + R3 -->
       <circle id="svg-R3" cx="332" cy="162" r="30" class="stick-well"/>
       <circle id="dz-R" cx="332" cy="162" r="10" class="dz-ring"/>
       <circle id="dot-R" cx="332" cy="162" r="6" class="stick-dot"/>
 
-      <!-- ABXY -->
       <circle id="svg-Y" cx="390" cy="84" r="13" class="pad-btn"/>
       <text x="390" y="84" class="pad-txt">Y</text>
       <circle id="svg-A" cx="390" cy="132" r="13" class="pad-btn"/>
@@ -149,6 +151,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <circle id="svg-B" cx="414" cy="108" r="13" class="pad-btn"/>
       <text x="414" y="108" class="pad-txt">B</text>
     </svg>
+  </div>
+
+  <div class="layer-bar">
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <strong id="lblShiftModifier" style="font-size:13px;">Shift Layer Button:</strong>
+      <select id="shiftButtonSelect" onchange="updateShiftModifier()"></select>
+      <span id="hintLegend" style="font-size:12px; color:var(--muted);">T = Turbo (Rapid-Fire) | L = Toggle (Lock)</span>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button id="btnLayerBase" class="primary" onclick="setEditLayer('base')">Base Layer</button>
+      <button id="btnLayerShift" onclick="setEditLayer('shift')">Shift Layer</button>
+    </div>
   </div>
 
   <div class="grid">
@@ -162,18 +176,19 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
       <div class="row"><label id="lblDeadzone">Deadzone (0 - 30000)</label><input type="number" id="deadzone" step="500" oninput="renderProfileDeadzone()"></div>
       <div class="row"><label id="lblTrigger">Trigger Threshold (10 - 1000)</label><input type="number" id="triggerThreshold" step="25"></div>
+      <div class="row"><label id="lblTurboRate">Turbo Speed (Hz)</label><input type="number" id="turboRate" min="2" max="40" step="1"></div>
       <div class="row"><label id="lblMouseSpeed">Mouse Speed</label><input type="number" id="mouseSpeed" step="1"></div>
       <div class="row"><label id="lblMouseCurve">Mouse Curve (1.0 - 3.0)</label><input type="number" id="mouseCurve" step="0.1"></div>
       <div class="row"><label id="lblScrollSpeed">Scroll Speed (LB)</label><input type="number" id="scrollSpeed" step="0.2"></div>
     </div>
 
-    <div class="card">
-      <h2 id="hMainBtns">Face & Shoulder Buttons</h2>
+    <div class="card" id="cardMainBtns">
+      <h2><span id="hMainBtns">Face & Shoulder Buttons</span><span id="badgeLayer1" style="font-size:10px;">BASE</span></h2>
       <div id="mainButtons"></div>
     </div>
 
-    <div class="card">
-      <h2 id="hDpadBtns">D-Pad & System</h2>
+    <div class="card" id="cardDpadBtns">
+      <h2><span id="hDpadBtns">D-Pad & System</span><span id="badgeLayer2" style="font-size:10px;">BASE</span></h2>
       <div id="dpadButtons"></div>
     </div>
 
@@ -208,9 +223,15 @@ const I18N = {
     optTplDefault: "+ Preset Pronto...",
     newProf: "+ Novo", exportProf: "Exportar", importProf: "Importar", delProf: "Excluir", saveAll: "Salvar Tudo",
     disconnected: "Controle desconectado",
-    hSticks: "Analógicos & Gatilhos", lblRsMode: "Modo Analógico Direito",
+    btnCalibrate: "🎯 Calibrar Zero-Drift",
+    lblShiftModifier: "Botão Modificador (Shift Layer):",
+    shiftNone: "Desativado",
+    hintLegend: "T = Turbo (Disparo Rápido) | L = Toggle (Travar Tecla)",
+    btnLayerBase: "Camada Normal", btnLayerShift: "Camada Shift",
+    hSticks: "Analógicos, Gatilhos & Turbo", lblRsMode: "Modo Analógico Direito",
     optMouse: "Mouse + Scroll (LB)", optKeys: "Teclas Direcionais",
     lblDeadzone: "Deadzone (0 - 30000)", lblTrigger: "Limiar Gatilho (10 - 1000)",
+    lblTurboRate: "Velocidade Turbo (cliques/s)",
     lblMouseSpeed: "Velocidade Mouse", lblMouseCurve: "Curva Mouse (1.0 - 3.0)",
     lblScrollSpeed: "Velocidade Scroll (LB)",
     hMainBtns: "Botões Principais & Ombros", hDpadBtns: "D-Pad & Sistema",
@@ -222,16 +243,24 @@ const I18N = {
     errMinOne: "Você precisa manter pelo menos 1 perfil.",
     confirmDel: "Excluir o perfil",
     toastSaved: "Configurações salvas e aplicadas!",
+    toastCalibrated: "Centro Zero-Drift calibrado! Clique em Salvar Tudo.",
+    toastCalReset: "Calibração zerada! Clique em Salvar Tudo.",
     toastImported: "Perfil importado! Clique em Salvar Tudo para aplicar.",
-    bindBtn: "⌨️", bindWait: "Aperte tecla..."
+    bindBtn: "⌨️", bindWait: "..."
   },
   en: {
     optTplDefault: "+ Load Preset...",
     newProf: "+ New", exportProf: "Export", importProf: "Import", delProf: "Delete", saveAll: "Save All",
     disconnected: "Controller disconnected",
-    hSticks: "Sticks & Triggers", lblRsMode: "Right Stick Mode",
+    btnCalibrate: "🎯 Calibrate Zero-Drift",
+    lblShiftModifier: "Shift Layer Modifier Button:",
+    shiftNone: "Disabled",
+    hintLegend: "T = Turbo (Rapid-Fire) | L = Toggle (Hold Lock)",
+    btnLayerBase: "Base Layer", btnLayerShift: "Shift Layer",
+    hSticks: "Sticks, Triggers & Turbo", lblRsMode: "Right Stick Mode",
     optMouse: "Mouse + Scroll (LB)", optKeys: "Directional Keys",
     lblDeadzone: "Deadzone (0 - 30000)", lblTrigger: "Trigger Threshold (10 - 1000)",
+    lblTurboRate: "Turbo Rate (clicks/s)",
     lblMouseSpeed: "Mouse Speed", lblMouseCurve: "Mouse Curve (1.0 - 3.0)",
     lblScrollSpeed: "Scroll Speed (LB)",
     hMainBtns: "Face & Shoulder Buttons", hDpadBtns: "D-Pad & System",
@@ -243,16 +272,24 @@ const I18N = {
     errMinOne: "You must keep at least 1 profile.",
     confirmDel: "Delete profile",
     toastSaved: "Configuration saved and applied!",
+    toastCalibrated: "Zero-Drift center calibrated! Click Save All.",
+    toastCalReset: "Calibration reset! Click Save All.",
     toastImported: "Profile imported! Click Save All to apply.",
-    bindBtn: "⌨️", bindWait: "Press key..."
+    bindBtn: "⌨️", bindWait: "..."
   },
   es: {
     optTplDefault: "+ Plantilla...",
     newProf: "+ Nuevo", exportProf: "Exportar", importProf: "Importar", delProf: "Eliminar", saveAll: "Guardar Todo",
     disconnected: "Control desconectado",
-    hSticks: "Joysticks y Gatillos", lblRsMode: "Modo Joystick Derecho",
+    btnCalibrate: "🎯 Calibrar Zero-Drift",
+    lblShiftModifier: "Botón Modificador (Shift Layer):",
+    shiftNone: "Desactivado",
+    hintLegend: "T = Turbo (Disparo Rápido) | L = Toggle (Bloqueo)",
+    btnLayerBase: "Capa Normal", btnLayerShift: "Capa Shift",
+    hSticks: "Joysticks, Gatillos y Turbo", lblRsMode: "Modo Joystick Derecho",
     optMouse: "Ratón + Scroll (LB)", optKeys: "Teclas Direccionales",
     lblDeadzone: "Zona Muerta (0 - 30000)", lblTrigger: "Umbral Gatillo (10 - 1000)",
+    lblTurboRate: "Velocidad Turbo (clics/s)",
     lblMouseSpeed: "Velocidad Ratón", lblMouseCurve: "Curva Ratón (1.0 - 3.0)",
     lblScrollSpeed: "Velocidad Scroll (LB)",
     hMainBtns: "Botones Principales y Superiores", hDpadBtns: "Cruceta y Sistema",
@@ -264,21 +301,25 @@ const I18N = {
     errMinOne: "Debes mantener al menos 1 perfil.",
     confirmDel: "¿Eliminar el perfil",
     toastSaved: "¡Configuración guardada y aplicada!",
+    toastCalibrated: "¡Centro Zero-Drift calibrado! Haz clic en Guardar Todo.",
+    toastCalReset: "¡Calibración reiniciada! Haz clic en Guardar Todo.",
     toastImported: "¡Perfil importado! Haz clic en Guardar Todo.",
-    bindBtn: "⌨️", bindWait: "Pulsa tecla..."
+    bindBtn: "⌨️", bindWait: "..."
   }
 };
 
 const PRESETS = {
   pcsx2: {
-    right_stick_mode: "keys", deadzone: 9000, trigger_threshold: 200,
-    buttons: { A:"k", B:"l", X:"j", Y:"i", MENU:"enter", VIEW:"z", SHARE:"f1", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"q", RB:"e", L3:"2", R3:"4", LT:"1", RT:"3" },
+    right_stick_mode: "keys", deadzone: 9000, trigger_threshold: 200, shift_button: "SHARE",
+    buttons: { A:"k", B:"l", X:"j", Y:"i", MENU:"enter", VIEW:"z", SHARE:"", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"q", RB:"e", L3:"2", R3:"4", LT:"1", RT:"3" },
+    shift_buttons: { LB:"f3", RB:"f1", UP:"tab", ESC:"esc" },
     left_stick: { up:"w", down:"s", left:"a", right:"d" },
     right_stick: { up:"t", down:"g", left:"f", right:"h" }
   },
   dolphin: {
-    right_stick_mode: "keys", deadzone: 9500, trigger_threshold: 200,
-    buttons: { A:"x", B:"z", X:"c", Y:"s", MENU:"enter", VIEW:"tab", SHARE:"f1", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"q", RB:"e", L3:"1", R3:"2", LT:"l", RT:"r" },
+    right_stick_mode: "keys", deadzone: 9500, trigger_threshold: 200, shift_button: "SHARE",
+    buttons: { A:"x", B:"z", X:"c", Y:"s", MENU:"enter", VIEW:"tab", SHARE:"", UP:"up", DOWN:"down", LEFT:"left", RIGHT:"right", LB:"q", RB:"e", L3:"1", R3:"2", LT:"l", RT:"r" },
+    shift_buttons: { LB:"f2", RB:"f1" },
     left_stick: { up:"w", down:"s", left:"a", right:"d" },
     right_stick: { up:"i", down:"k", left:"j", right:"l" }
   },
@@ -292,9 +333,12 @@ const PRESETS = {
 
 let cfg = {};
 let lang = "en";
+let editLayer = "base";
 let activeBindTarget = null;
+let lastRaw = { lx: 0, ly: 0, rx: 0, ry: 0 };
 const MAIN_BTNS = ["A", "B", "X", "Y", "LB", "RB", "LT", "RT", "L3", "R3"];
 const DPAD_BTNS = ["UP", "DOWN", "LEFT", "RIGHT", "MENU", "VIEW", "SHARE"];
+const ALL_BTNS = [...MAIN_BTNS, ...DPAD_BTNS];
 const DIRS = ["up", "down", "left", "right"];
 
 function t(k) { return (I18N[lang] || I18N.en)[k] || k; }
@@ -303,7 +347,7 @@ function showToast(msg) {
   const el = document.getElementById("toast");
   el.textContent = msg;
   el.style.display = "block";
-  setTimeout(() => el.style.display = "none", 2400);
+  setTimeout(() => el.style.display = "none", 2600);
 }
 
 function applyLang() {
@@ -315,12 +359,18 @@ function applyLang() {
   document.getElementById("btnImport").textContent = t("importProf");
   document.getElementById("btnDel").textContent = t("delProf");
   document.getElementById("btnSave").textContent = t("saveAll");
+  document.getElementById("btnCalibrate").textContent = t("btnCalibrate");
+  document.getElementById("lblShiftModifier").textContent = t("lblShiftModifier");
+  document.getElementById("hintLegend").textContent = t("hintLegend");
+  document.getElementById("btnLayerBase").textContent = t("btnLayerBase");
+  document.getElementById("btnLayerShift").textContent = t("btnLayerShift");
   document.getElementById("hSticks").textContent = t("hSticks");
   document.getElementById("lblRsMode").textContent = t("lblRsMode");
   document.getElementById("optMouse").textContent = t("optMouse");
   document.getElementById("optKeys").textContent = t("optKeys");
   document.getElementById("lblDeadzone").textContent = t("lblDeadzone");
   document.getElementById("lblTrigger").textContent = t("lblTrigger");
+  document.getElementById("lblTurboRate").textContent = t("lblTurboRate");
   document.getElementById("lblMouseSpeed").textContent = t("lblMouseSpeed");
   document.getElementById("lblMouseCurve").textContent = t("lblMouseCurve");
   document.getElementById("lblScrollSpeed").textContent = t("lblScrollSpeed");
@@ -338,6 +388,7 @@ function changeLang() {
   lang = document.getElementById("langSelect").value;
   cfg.language = lang;
   applyLang();
+  populateShiftModifier();
 }
 
 async function load() {
@@ -360,6 +411,31 @@ function populateSelect() {
     if (name === cfg.active_profile) opt.selected = true;
     sel.appendChild(opt);
   });
+}
+
+function populateShiftModifier() {
+  const p = cfg.profiles[document.getElementById("profileSelect").value];
+  const sel = document.getElementById("shiftButtonSelect");
+  sel.innerHTML = `<option value="">${t("shiftNone")}</option>` +
+    ALL_BTNS.map(b => `<option value="${b}" ${p.shift_button === b ? "selected" : ""}>${b}</option>`).join("");
+}
+
+function updateShiftModifier() {
+  const p = cfg.profiles[document.getElementById("profileSelect").value];
+  p.shift_button = document.getElementById("shiftButtonSelect").value;
+  renderProfile();
+}
+
+function setEditLayer(layer) {
+  collectCurrentProfile();
+  editLayer = layer;
+  document.getElementById("btnLayerBase").className = layer === "base" ? "primary" : "";
+  document.getElementById("btnLayerShift").className = layer === "shift" ? "shift-active" : "";
+  document.getElementById("cardMainBtns").classList.toggle("shift-mode", layer === "shift");
+  document.getElementById("cardDpadBtns").classList.toggle("shift-mode", layer === "shift");
+  document.getElementById("badgeLayer1").textContent = layer.toUpperCase();
+  document.getElementById("badgeLayer2").textContent = layer.toUpperCase();
+  renderProfile();
 }
 
 function renderGlobalRules() {
@@ -393,19 +469,46 @@ function renderProfile() {
   const name = document.getElementById("profileSelect").value;
   cfg.active_profile = name;
   const p = cfg.profiles[name];
+  if (!p.shift_buttons) p.shift_buttons = {};
+  if (!p.turbo_buttons) p.turbo_buttons = [];
+  if (!p.toggle_buttons) p.toggle_buttons = [];
+
+  populateShiftModifier();
   document.getElementById("rightStickMode").value = p.right_stick_mode || "mouse";
   document.getElementById("deadzone").value = p.deadzone ?? cfg.deadzone ?? 10000;
   document.getElementById("triggerThreshold").value = p.trigger_threshold ?? cfg.trigger_threshold ?? 200;
+  document.getElementById("turboRate").value = p.turbo_rate ?? 12;
   document.getElementById("mouseSpeed").value = p.mouse_speed ?? cfg.mouse_speed ?? 18;
   document.getElementById("mouseCurve").value = p.mouse_curve ?? cfg.mouse_curve ?? 1.8;
   document.getElementById("scrollSpeed").value = p.scroll_speed ?? 2.8;
 
-  renderKeyGroup("mainButtons", MAIN_BTNS, p.buttons);
-  renderKeyGroup("dpadButtons", DPAD_BTNS, p.buttons);
+  const targetMap = editLayer === "shift" ? p.shift_buttons : p.buttons;
+  renderButtonGroup("mainButtons", MAIN_BTNS, targetMap, p);
+  renderButtonGroup("dpadButtons", DPAD_BTNS, targetMap, p);
   renderKeyGroup("leftStickKeys", DIRS, p.left_stick);
   renderKeyGroup("rightStickKeys", DIRS, p.right_stick);
   toggleStickInputs();
   renderProfileDeadzone();
+}
+
+function renderButtonGroup(elId, keys, obj, prof) {
+  const el = document.getElementById(elId);
+  const turboSet = new Set(prof.turbo_buttons || []);
+  const toggleSet = new Set(prof.toggle_buttons || []);
+  el.innerHTML = keys.map(k => {
+    const isModifier = prof.shift_button === k;
+    return `
+      <div class="row" style="${isModifier ? "opacity:0.45;" : ""}">
+        <label>${k}${isModifier ? " (SHIFT)" : ""}</label>
+        <div class="bind-wrap">
+          <input type="text" id="inp-${elId}-${k}" data-key="${k}" value="${obj[k] || ""}" ${isModifier ? "disabled" : ""}>
+          <button type="button" class="bind-btn" onclick="startBind(this, 'inp-${elId}-${k}')" ${isModifier ? "disabled" : ""}>${t("bindBtn")}</button>
+          <label class="flag-pill" title="Turbo"><input type="checkbox" class="chk-turbo" data-key="${k}" ${turboSet.has(k) ? "checked" : ""}>T</label>
+          <label class="flag-pill" title="Toggle"><input type="checkbox" class="chk-toggle" data-key="${k}" ${toggleSet.has(k) ? "checked" : ""}>L</label>
+        </div>
+      </div>
+    `;
+  }).join("");
 }
 
 function renderKeyGroup(elId, keys, obj) {
@@ -464,23 +567,51 @@ function toggleStickInputs() {
   document.getElementById("rightStickCard").style.opacity = isMouse ? "0.4" : "1";
 }
 
+function calibrateZeroDrift() {
+  cfg.calibration = {
+    lx_offset: lastRaw.lx,
+    ly_offset: lastRaw.ly,
+    rx_offset: lastRaw.rx,
+    ry_offset: lastRaw.ry
+  };
+  showToast(t("toastCalibrated"));
+}
+
+function resetZeroDrift() {
+  cfg.calibration = { lx_offset: 0, ly_offset: 0, rx_offset: 0, ry_offset: 0 };
+  showToast(t("toastCalReset"));
+}
+
 function collectCurrentProfile() {
   const name = document.getElementById("profileSelect").value;
   const p = cfg.profiles[name];
+  if (!p.shift_buttons) p.shift_buttons = {};
+  p.shift_button = document.getElementById("shiftButtonSelect").value;
   p.right_stick_mode = document.getElementById("rightStickMode").value;
   p.deadzone = parseInt(document.getElementById("deadzone").value) || 10000;
   p.trigger_threshold = parseInt(document.getElementById("triggerThreshold").value) || 200;
+  p.turbo_rate = parseInt(document.getElementById("turboRate").value) || 12;
   p.mouse_speed = parseFloat(document.getElementById("mouseSpeed").value) || 18;
   p.mouse_curve = parseFloat(document.getElementById("mouseCurve").value) || 1.8;
   p.scroll_speed = parseFloat(document.getElementById("scrollSpeed").value) || 2.8;
 
-  document.querySelectorAll("#mainButtons input, #dpadButtons input").forEach(inp => {
-    p.buttons[inp.dataset.key] = inp.value.trim();
+  const targetMap = editLayer === "shift" ? p.shift_buttons : p.buttons;
+  document.querySelectorAll("#mainButtons input[type='text'], #dpadButtons input[type='text']").forEach(inp => {
+    targetMap[inp.dataset.key] = inp.value.trim();
   });
-  document.querySelectorAll("#leftStickKeys input").forEach(inp => {
+
+  const turbos = [];
+  document.querySelectorAll(".chk-turbo:checked").forEach(chk => turbos.push(chk.dataset.key));
+  p.turbo_buttons = turbos;
+
+  const toggles = [];
+  document.querySelectorAll(".chk-toggle:checked").forEach(chk => toggles.push(chk.dataset.key));
+  p.toggle_buttons = toggles;
+
+  document.querySelectorAll("#leftStickKeys input[type='text']").forEach(inp => {
     p.left_stick[inp.dataset.key] = inp.value.trim();
   });
-  document.querySelectorAll("#rightStickKeys input").forEach(inp => {
+  document.querySelectorAll("#rightStickKeys input[type='text']").forEach(inp => {
     p.right_stick[inp.dataset.key] = inp.value.trim();
   });
 
@@ -583,7 +714,14 @@ async function pollLive() {
     });
 
     if (live.connected) {
-      st.innerHTML = `<span style="color:var(--ok)">● ${live.connected}</span> (${live.profile})`;
+      lastRaw = {
+        lx: live.raw_lx ?? live.lx ?? 0,
+        ly: live.raw_ly ?? live.ly ?? 0,
+        rx: live.raw_rx ?? live.rx ?? 0,
+        ry: live.raw_ry ?? live.ry ?? 0
+      };
+      const shiftTag = live.shift_active ? ` <span class="badge" style="background:rgba(168,85,247,0.2);color:#c084fc;border-color:#a855f7;">SHIFT</span>` : "";
+      st.innerHTML = `<span style="color:var(--ok)">● ${live.connected}</span> (${live.profile})${shiftTag}`;
       sticks.textContent = `LS: ${live.lx}, ${live.ly} | RS: ${live.rx}, ${live.ry} | LT: ${live.lt} RT: ${live.rt}`;
       const lxOff = (live.lx / 32768) * 22;
       const lyOff = -(live.ly / 32768) * 22;

@@ -31,6 +31,15 @@ SPECIAL_KEYS = {
     "page_up": Key.page_up,
     "page_down": Key.page_down,
     "f1": Key.f1,
+    "f2": Key.f2,
+    "f3": Key.f3,
+    "f4": Key.f4,
+    "f5": Key.f5,
+    "f6": Key.f6,
+    "f7": Key.f7,
+    "f8": Key.f8,
+    "f9": Key.f9,
+    "f10": Key.f10,
     "f11": Key.f11,
     "f12": Key.f12,
     "vol_up": Key.media_volume_up,
@@ -55,6 +64,10 @@ BIT_MAP = {
     "L3": (5, 64),
     "R3": (5, 128),
 }
+
+
+def clamp_axis(val):
+    return max(-32768, min(32767, int(val)))
 
 
 def calc_radial_vector(rx, ry, deadzone, max_speed, curve=1.8):
@@ -85,6 +98,10 @@ class GameSirBridge:
         self.kb, self.mouse = KbController(), MouseController()
         self.pressed_keys, self.pressed_mouse = set(), set()
         self.active_combos, self.suppressed_buttons = set(), set()
+        self.toggled_actions = set()
+        self.prev_physical_held = set()
+        self.turbo_timers = {}
+        self.raw_axes = (0, 0, 0, 0)
         self._rem_x = self._rem_y = self._scroll_rem_x = self._scroll_rem_y = 0.0
 
     def reload_config(self, override_profile=None):
@@ -158,6 +175,9 @@ class GameSirBridge:
                 pass
         self.pressed_keys.clear()
         self.pressed_mouse.clear()
+        self.toggled_actions.clear()
+        self.prev_physical_held.clear()
+        self.turbo_timers.clear()
         self._rem_x = self._rem_y = self._scroll_rem_x = self._scroll_rem_y = 0.0
 
     def trigger_macro(self, combo_str):
@@ -172,7 +192,7 @@ class GameSirBridge:
         for k in reversed(keys):
             self.kb.release(k)
 
-    def _write_live_state(self, held_list, lx, ly, rx, ry, lt, rt):
+    def _write_live_state(self, held_list, lx, ly, rx, ry, lt, rt, shift_active=False):
         now = time.time()
         if now - self._last_live_write < 0.08:
             return
@@ -181,11 +201,16 @@ class GameSirBridge:
             payload = {
                 "connected": self.connected_name,
                 "profile": self.current_profile,
+                "shift_active": shift_active,
                 "held": held_list,
                 "lx": lx,
                 "ly": ly,
                 "rx": rx,
                 "ry": ry,
+                "raw_lx": self.raw_axes[0],
+                "raw_ly": self.raw_axes[1],
+                "raw_rx": self.raw_axes[2],
+                "raw_ry": self.raw_axes[3],
                 "lt": lt,
                 "rt": rt,
                 "ts": now,
@@ -306,7 +331,8 @@ class GameSirBridge:
             dev, ep_in = self._connect()
             if dev is None:
                 self.connected_name = self.ep_out = None
-                self._write_live_state([], 0, 0, 0, 0, 0, 0)
+                self.raw_axes = (0, 0, 0, 0)
+                self._write_live_state([], 0, 0, 0, 0, 0, 0, False)
                 if self.on_status:
                     self.on_status(None, self.current_profile)
                 time.sleep(1.5)
@@ -364,34 +390,54 @@ class GameSirBridge:
     def _process_packet(self, data):
         prof = self.cfg["profiles"][self.current_profile]
         btns = prof["buttons"]
+        shift_btn = prof.get("shift_button", "")
+        shift_btns = prof.get("shift_buttons", {})
+        turbo_set = set(prof.get("turbo_buttons", []))
+        toggle_set = set(prof.get("toggle_buttons", []))
+        turbo_hz = max(2, min(40, int(prof.get("turbo_rate", 12))))
+        turbo_half_period = 0.5 / turbo_hz
+
         deadzone = prof.get("deadzone", self.cfg.get("deadzone", 10000))
         trig_thresh = prof.get(
             "trigger_threshold", self.cfg.get("trigger_threshold", 200)
         )
+        cal = self.cfg.get("calibration", {})
+
         held = {
             name for name, (idx, mask) in BIT_MAP.items() if bool(data[idx] & mask)
         }
-        lx, ly = (
+        raw_lx, raw_ly = (
             struct.unpack("<h", bytes(data[10:12]))[0],
             struct.unpack("<h", bytes(data[12:14]))[0],
         )
-        rx, ry = (
+        raw_rx, raw_ry = (
             struct.unpack("<h", bytes(data[14:16]))[0],
             struct.unpack("<h", bytes(data[16:18]))[0],
         )
+        self.raw_axes = (raw_lx, raw_ly, raw_rx, raw_ry)
+
+        lx = clamp_axis(raw_lx - int(cal.get("lx_offset", 0)))
+        ly = clamp_axis(raw_ly - int(cal.get("ly_offset", 0)))
+        rx = clamp_axis(raw_rx - int(cal.get("rx_offset", 0)))
+        ry = clamp_axis(raw_ry - int(cal.get("ry_offset", 0)))
+
         lt, rt = (
             struct.unpack("<H", bytes(data[6:8]))[0],
             struct.unpack("<H", bytes(data[8:10]))[0],
         )
 
-        live_held = sorted(held)
+        physical_inputs = set(held)
         if lt > trig_thresh:
-            live_held.append("LT")
+            physical_inputs.add("LT")
         if rt > trig_thresh:
-            live_held.append("RT")
-        self._write_live_state(live_held, lx, ly, rx, ry, lt, rt)
+            physical_inputs.add("RT")
 
-        self.suppressed_buttons.intersection_update(held)
+        shift_active = bool(shift_btn and shift_btn in physical_inputs)
+        self._write_live_state(
+            sorted(physical_inputs), lx, ly, rx, ry, lt, rt, shift_active
+        )
+
+        self.suppressed_buttons.intersection_update(physical_inputs)
 
         if "VIEW" in held and "UP" in held:
             if "CYCLE" not in self.active_combos:
@@ -403,6 +449,7 @@ class GameSirBridge:
                     vibrate=True,
                     show_osd=True,
                 )
+            self.prev_physical_held = physical_inputs
             return
         self.active_combos.discard("CYCLE")
 
@@ -412,13 +459,14 @@ class GameSirBridge:
                 self.suppressed_buttons.update({"VIEW", "DOWN"})
                 if self.on_quick_hud:
                     self.on_quick_hud()
+            self.prev_physical_held = physical_inputs
             return
         self.active_combos.discard("HUD")
 
         triggered = False
         for c_key, m_val in self.cfg.get("combos", {}).items():
             req = {b.strip() for b in c_key.split("+") if b.strip()}
-            if req and req.issubset(held):
+            if req and req.issubset(physical_inputs):
                 triggered = True
                 if c_key not in self.active_combos:
                     self.active_combos.add(c_key)
@@ -428,18 +476,61 @@ class GameSirBridge:
             else:
                 self.active_combos.discard(c_key)
         if triggered:
+            self.prev_physical_held = physical_inputs
             return
 
         is_mouse = prof.get("right_stick_mode") == "mouse"
         if is_mouse and ("LB" in held) and (math.hypot(rx, ry) > deadzone):
             self.suppressed_buttons.add("LB")
-        for name in BIT_MAP:
-            self._set_input(
-                btns.get(name),
-                (name in held) and (name not in self.suppressed_buttons),
+
+        now = time.time()
+        all_btn_names = list(BIT_MAP.keys()) + ["LT", "RT"]
+        desired_actions = {}
+
+        for name in all_btn_names:
+            if shift_btn and name == shift_btn:
+                continue
+
+            phys_down = (name in physical_inputs) and (
+                name not in self.suppressed_buttons
             )
-        self._set_input(btns.get("LT"), lt > trig_thresh)
-        self._set_input(btns.get("RT"), rt > trig_thresh)
+            just_pressed = phys_down and (name not in self.prev_physical_held)
+
+            base_act = btns.get(name, "")
+            shift_act = shift_btns.get(name, "") if shift_active else ""
+            action = shift_act if (shift_active and shift_act) else base_act
+
+            if not action:
+                continue
+
+            if name in toggle_set:
+                if just_pressed:
+                    if action in self.toggled_actions:
+                        self.toggled_actions.remove(action)
+                    else:
+                        self.toggled_actions.add(action)
+                if action in self.toggled_actions:
+                    desired_actions[action] = True
+                else:
+                    desired_actions.setdefault(action, False)
+            elif name in turbo_set and phys_down:
+                t0 = self.turbo_timers.setdefault(name, now)
+                phase = int((now - t0) / turbo_half_period) % 2 == 0
+                if phase:
+                    desired_actions[action] = True
+                else:
+                    desired_actions.setdefault(action, False)
+            else:
+                self.turbo_timers.pop(name, None)
+                if phys_down:
+                    desired_actions[action] = True
+                else:
+                    desired_actions.setdefault(action, False)
+
+        for action, state in desired_actions.items():
+            self._set_input(action, state)
+
+        self.prev_physical_held = physical_inputs
         self._process_sticks(prof, deadzone, lx, ly, rx, ry, is_mouse, held)
 
     def _process_sticks(self, prof, deadzone, lx, ly, rx, ry, is_mouse, held):
