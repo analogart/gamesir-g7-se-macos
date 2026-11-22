@@ -1,3 +1,4 @@
 pyusb>=1.2.1
 pynput>=1.7.6
 pyobjc-framework-Cocoa>=10.0
+pyobjc-framework-WebKit>=10.0

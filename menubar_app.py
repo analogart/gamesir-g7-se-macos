@@ -11,10 +11,16 @@ import threading
 import urllib.request
 import webbrowser
 
+from app_paths import (
+    APP_VERSION,
+    GITHUB_REPO,
+    get_config_path,
+    get_pid_path,
+    get_resource_dir,
+)
+
 LOCK_PATH = "/tmp/gamesir_bridge.lock"
 WAKE_PATH = "/tmp/gamesir_bridge.wake"
-APP_VERSION = "v6.0.0"
-GITHUB_REPO = "analogart/gamesir-g7-se-macos"
 
 _lock_fp = open(LOCK_PATH, "w")
 try:
@@ -65,6 +71,7 @@ try:
 except ImportError:
     HAS_WEBKIT = False
 
+from config_ui import PORT as CONFIG_UI_PORT, start_background_server
 from gamesir_bridge import GameSirBridge
 
 STRINGS = {
@@ -85,7 +92,7 @@ STRINGS = {
         "upd_err": "Não foi possível verificar atualizações agora.",
         "upd_open": "Abrir GitHub",
         "upd_ok": "OK",
-        "hint": "Fechar no X mantém o bridge ativo em segundo plano.\nAtalhos: VIEW + ↓ (Painel) | VIEW + ↑ (Perfil)",
+        "hint": "Fechar no X mantém o bridge ativo em segundo plano.\nAtalhos: VIEW + ▲ (Painel) | VIEW + ▼ (Perfil)",
     },
     "en": {
         "searching": "Searching for USB controller...",
@@ -104,7 +111,7 @@ STRINGS = {
         "upd_err": "Could not check for updates right now.",
         "upd_open": "Open GitHub",
         "upd_ok": "OK",
-        "hint": "Closing with X keeps the bridge running in background.\nShortcuts: VIEW + ↓ (Panel) | VIEW + ↑ (Profile)",
+        "hint": "Closing with X keeps the bridge running in background.\nShortcuts: VIEW + ▲ (Panel) | VIEW + ▼ (Profile)",
     },
     "es": {
         "searching": "Buscando control USB...",
@@ -123,7 +130,7 @@ STRINGS = {
         "upd_err": "No se pudieron comprobar actualizaciones ahora.",
         "upd_open": "Abrir GitHub",
         "upd_ok": "OK",
-        "hint": "Cerrar con X mantiene el bridge activo en segundo plano.\nAtajos: VIEW + ↓ (Panel) | VIEW + ↑ (Perfil)",
+        "hint": "Cerrar con X mantiene el bridge activo en segundo plano.\nAtajos: VIEW + ▲ (Panel) | VIEW + ▼ (Perfil)",
     },
 }
 
@@ -232,7 +239,7 @@ class ConfigWebWindow(NSObject):
         return False
 
     @objc.python_method
-    def show(self, url_str="http://127.0.0.1:58492"):
+    def show(self, url_str=f"http://127.0.0.1:{CONFIG_UI_PORT}"):
         if not HAS_WEBKIT:
             webbrowser.open(url_str)
             return
@@ -304,15 +311,15 @@ class ControlPanel(NSObject):
         if self.status_lbl is not None:
             if self.ctrl.last_device:
                 self.status_lbl.setStringValue_(
-                    f"●  {self.ctrl.t('connected').format(self.ctrl.last_device)}"
+                    f"● {self.ctrl.t('connected').format(self.ctrl.last_device)}"
                 )
                 self.status_lbl.setTextColor_(NSColor.systemGreenColor())
             else:
-                self.status_lbl.setStringValue_(f"○  {self.ctrl.t('searching')}")
+                self.status_lbl.setStringValue_(f"○ {self.ctrl.t('searching')}")
                 self.status_lbl.setTextColor_(NSColor.labelColor())
         for prof_name, btn in self.profile_buttons.items():
             active = prof_name == self.ctrl.bridge.current_profile
-            btn.setTitle_(f"✓   {prof_name}" if active else prof_name)
+            btn.setTitle_(f"✓ {prof_name}" if active else prof_name)
 
     @objc.python_method
     def show(self):
@@ -369,7 +376,7 @@ class ControlPanel(NSObject):
         cur_y = h - 104
         if not ax_ok:
             ax_btn = NSButton.alloc().initWithFrame_(NSMakeRect(30, cur_y, w - 60, 32))
-            ax_btn.setTitle_(f"⚠️  {self.ctrl.t('ax_fix')}")
+            ax_btn.setTitle_(f"⚠ {self.ctrl.t('ax_fix')}")
             ax_btn.setBezelStyle_(NSBezelStyleRounded)
             ax_btn.setTarget_(self)
             ax_btn.setAction_("openAccessibility:")
@@ -473,7 +480,7 @@ class GameSirAppDelegate(NSObject):
         self.nsapp = NSApplication.sharedApplication()
         self.nsapp.setActivationPolicy_(NSApplicationActivationPolicyRegular)
 
-        icns_path = str(pathlib.Path(__file__).parent / "AppIcon.icns")
+        icns_path = str(get_resource_dir() / "AppIcon.icns")
         icon = NSImage.alloc().initWithContentsOfFile_(icns_path)
         if icon is not None:
             self.nsapp.setApplicationIconImage_(icon)
@@ -555,10 +562,12 @@ class GameSirAppDelegate(NSObject):
             self._timer.invalidate()
         except Exception:
             pass
-        pid_file = pathlib.Path(__file__).parent / ".config_ui.pid"
+        pid_file = get_pid_path()
         if pid_file.exists():
             try:
-                os.kill(int(pid_file.read_text().strip()), signal.SIGTERM)
+                old_pid = int(pid_file.read_text().strip())
+                if old_pid != os.getpid():
+                    os.kill(old_pid, signal.SIGTERM)
                 pid_file.unlink(missing_ok=True)
             except Exception:
                 pass
@@ -607,7 +616,7 @@ class GameSirAppDelegate(NSObject):
         self.lang = code
         self.bridge.cfg["language"] = code
         try:
-            pathlib.Path(__file__).parent.joinpath("profiles.json").write_text(
+            get_config_path().write_text(
                 json.dumps(self.bridge.cfg, indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
@@ -617,17 +626,16 @@ class GameSirAppDelegate(NSObject):
 
     @objc.python_method
     def open_config_ui(self):
-        cmd = [sys.executable, str(pathlib.Path(__file__).parent / "config_ui.py")]
-        if HAS_WEBKIT:
-            cmd.append("--no-browser")
-        subprocess.Popen(cmd)
+        start_background_server()
         if HAS_WEBKIT:
             NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-                0.45, self, "openNativeWebTimer:", None, False
+                0.15, self, "openNativeWebTimer:", None, False
             )
+        else:
+            webbrowser.open(f"http://127.0.0.1:{CONFIG_UI_PORT}")
 
     def openNativeWebTimer_(self, _t):
-        self.config_win.show("http://127.0.0.1:58492")
+        self.config_win.show(f"http://127.0.0.1:{CONFIG_UI_PORT}")
 
     @objc.python_method
     def check_github_updates(self):

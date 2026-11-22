@@ -10,18 +10,20 @@ import time
 import urllib.parse
 import webbrowser
 
-PORT = 58492
-BASE_DIR = pathlib.Path(__file__).parent
-CONFIG_PATH = BASE_DIR / "profiles.json"
-PID_PATH = BASE_DIR / ".config_ui.pid"
-LIVE_STATE_PATH = pathlib.Path("/tmp/gamesir_live.json")
+from app_paths import get_config_path, get_pid_path
 
-HTML_TEMPLATE = """<!DOCTYPE html>
+PORT = 58492
+CONFIG_PATH = get_config_path()
+PID_PATH = get_pid_path()
+LIVE_STATE_PATH = pathlib.Path("/tmp/gamesir_live.json")
+_server_started = False
+
+HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GameSir Bridge v6.0 — Visual Configurator</title>
+<title>GameSir Bridge v6.1 — Visual Configurator</title>
 <style>
   :root { --bg: #0c0e12; --card: #161922; --border: #262b38; --accent: #3b82f6; --shift: #a855f7; --ok: #10b981; --warn: #f59e0b; --danger: #ef4444; --text: #f3f4f6; --muted: #9ca3af; }
   body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 22px; }
@@ -71,7 +73,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <body>
 <div class="container">
   <header>
-    <h1>🎮 GameSir Bridge <span class="badge">v6.0</span></h1>
+    <h1> GameSir Bridge <span class="badge">v6.1</span></h1>
     <div class="toolbar">
       <select id="langSelect" onchange="changeLang()">
         <option value="pt">Português</option>
@@ -96,10 +98,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
   <div class="visualizer-card">
     <div class="vis-header">
-      <div id="liveStatus">○ Waiting for controller...</div>
+      <div id="liveStatus"> Waiting for controller...</div>
       <div class="vis-actions">
         <span id="liveSticks" style="color: var(--muted); font-family: monospace;">LS: 0, 0 | RS: 0, 0 | LT: 0 RT: 0</span>
-        <button id="btnCalibrate" onclick="calibrateZeroDrift()">🎯 Zero-Drift</button>
+        <button id="btnCalibrate" onclick="calibrateZeroDrift()"> Zero-Drift</button>
         <button id="btnResetCal" onclick="resetZeroDrift()" title="Reset calibration">↺</button>
       </div>
     </div>
@@ -131,13 +133,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <circle id="dot-L" cx="130" cy="108" r="6" class="stick-dot"/>
 
       <rect id="svg-UP" x="178" y="136" width="20" height="20" rx="4" class="pad-btn"/>
-      <text x="188" y="146" class="pad-txt">↑</text>
+      <text x="188" y="146" class="pad-txt">▲</text>
       <rect id="svg-DOWN" x="178" y="176" width="20" height="20" rx="4" class="pad-btn"/>
-      <text x="188" y="186" class="pad-txt">↓</text>
+      <text x="188" y="186" class="pad-txt">▼</text>
       <rect id="svg-LEFT" x="158" y="156" width="20" height="20" rx="4" class="pad-btn"/>
-      <text x="168" y="166" class="pad-txt">←</text>
+      <text x="168" y="166" class="pad-txt">◀</text>
       <rect id="svg-RIGHT" x="198" y="156" width="20" height="20" rx="4" class="pad-btn"/>
-      <text x="208" y="166" class="pad-txt">→</text>
+      <text x="208" y="166" class="pad-txt">▶</text>
 
       <circle id="svg-R3" cx="332" cy="162" r="30" class="stick-well"/>
       <circle id="dz-R" cx="332" cy="162" r="10" class="dz-ring"/>
@@ -224,7 +226,7 @@ const I18N = {
     optTplDefault: "+ Preset Pronto...",
     newProf: "+ Novo", exportProf: "Exportar", importProf: "Importar", delProf: "Excluir", saveAll: "Salvar Tudo",
     disconnected: "Controle desconectado",
-    btnCalibrate: "🎯 Calibrar Zero-Drift",
+    btnCalibrate: " Calibrar Zero-Drift",
     lblShiftModifier: "Botão Modificador (Shift Layer):",
     shiftNone: "Desativado",
     hintLegend: "T = Turbo (Disparo Rápido) | L = Toggle (Travar Tecla)",
@@ -253,7 +255,7 @@ const I18N = {
     optTplDefault: "+ Load Preset...",
     newProf: "+ New", exportProf: "Export", importProf: "Import", delProf: "Delete", saveAll: "Save All",
     disconnected: "Controller disconnected",
-    btnCalibrate: "🎯 Calibrate Zero-Drift",
+    btnCalibrate: " Calibrate Zero-Drift",
     lblShiftModifier: "Shift Layer Modifier Button:",
     shiftNone: "Disabled",
     hintLegend: "T = Turbo (Rapid-Fire) | L = Toggle (Hold Lock)",
@@ -282,7 +284,7 @@ const I18N = {
     optTplDefault: "+ Plantilla...",
     newProf: "+ Nuevo", exportProf: "Exportar", importProf: "Importar", delProf: "Eliminar", saveAll: "Guardar Todo",
     disconnected: "Control desconectado",
-    btnCalibrate: "🎯 Calibrar Zero-Drift",
+    btnCalibrate: " Calibrar Zero-Drift",
     lblShiftModifier: "Botón Modificador (Shift Layer):",
     shiftNone: "Desactivado",
     hintLegend: "T = Turbo (Disparo Rápido) | L = Toggle (Bloqueo)",
@@ -763,7 +765,7 @@ class ConfigHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
-            self.wfile.write(CONFIG_PATH.read_bytes())
+            self.wfile.write(get_config_path().read_bytes())
         elif parsed.path == "/api/live":
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -783,7 +785,7 @@ class ConfigHandler(http.server.BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(length).decode("utf-8")
             data = json.loads(body)
-            CONFIG_PATH.write_text(
+            get_config_path().write_text(
                 json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
             )
             self.send_response(200)
@@ -808,6 +810,24 @@ def kill_previous_instance():
 
 class ReusableTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
+
+
+def start_background_server():
+    """Inicia o servidor HTTP em uma thread daemon interna (compatível com .app standalone)."""
+    global _server_started
+    if _server_started:
+        return
+    kill_previous_instance()
+
+    def _serve():
+        try:
+            with ReusableTCPServer(("127.0.0.1", PORT), ConfigHandler) as httpd:
+                httpd.serve_forever()
+        except OSError:
+            pass
+
+    threading.Thread(target=_serve, daemon=True).start()
+    _server_started = True
 
 
 if __name__ == "__main__":

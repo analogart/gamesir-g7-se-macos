@@ -1,6 +1,19 @@
-import json, math, os, pathlib, struct, subprocess, sys, time, usb.core, usb.util
+import json
+import math
+import os
+import pathlib
+import shutil
+import struct
+import subprocess
+import sys
+import time
+import usb.backend.libusb1
+import usb.core
+import usb.util
 from pynput.keyboard import Controller as KbController, Key
 from pynput.mouse import Controller as MouseController, Button
+
+from app_paths import find_libusb_path, get_config_path
 
 try:
     from AppKit import NSWorkspace
@@ -79,6 +92,19 @@ def calc_radial_vector(rx, ry, deadzone, max_speed, curve=1.8):
     return (rx / mag) * scaled, (ry / mag) * scaled
 
 
+def _run_macos_shortcut(sc_name: str):
+    if not sc_name:
+        return
+    shortcuts_bin = shutil.which("shortcuts") or (
+        "/usr/bin/shortcuts" if os.path.exists("/usr/bin/shortcuts") else None
+    )
+    if shortcuts_bin:
+        try:
+            subprocess.Popen([shortcuts_bin, "run", sc_name])
+        except Exception:
+            pass
+
+
 class GameSirBridge:
     def __init__(
         self,
@@ -87,9 +113,10 @@ class GameSirBridge:
         on_profile_osd=None,
         on_quick_hud=None,
     ):
-        self.config_path = pathlib.Path(__file__).parent / "profiles.json"
+        self.config_path = get_config_path()
         self._last_mtime = 0.0
         self._last_live_write = 0.0
+        self._usb_backend = self._init_usb_backend()
         self.reload_config(initial_profile)
         self.on_status = on_status
         self.on_profile_osd = on_profile_osd
@@ -103,6 +130,15 @@ class GameSirBridge:
         self.turbo_timers = {}
         self.raw_axes = (0, 0, 0, 0)
         self._rem_x = self._rem_y = self._scroll_rem_x = self._scroll_rem_y = 0.0
+
+    @staticmethod
+    def _init_usb_backend():
+        lib_path = find_libusb_path()
+        if lib_path:
+            backend = usb.backend.libusb1.get_backend(find_library=lambda _: lib_path)
+            if backend is not None:
+                return backend
+        return usb.backend.libusb1.get_backend()
 
     def reload_config(self, override_profile=None):
         try:
@@ -184,8 +220,7 @@ class GameSirBridge:
         val = combo_str.strip()
         if val.lower().startswith("shortcut:"):
             sc_name = val.split(":", 1)[1].strip()
-            if sc_name:
-                subprocess.Popen(["shortcuts", "run", sc_name])
+            _run_macos_shortcut(sc_name)
             return
         keys = [
             SPECIAL_KEYS.get(k.strip().lower(), k.strip().lower())
@@ -229,8 +264,15 @@ class GameSirBridge:
             pass
 
     def _connect(self):
+        if self._usb_backend is None:
+            self._usb_backend = self._init_usb_backend()
         for vid, pid, name in SUPPORTED_DEVICES:
-            dev = usb.core.find(idVendor=vid, idProduct=pid)
+            try:
+                dev = usb.core.find(
+                    idVendor=vid, idProduct=pid, backend=self._usb_backend
+                )
+            except usb.core.USBError:
+                continue
             if dev is not None:
                 try:
                     dev.set_configuration()
@@ -317,8 +359,7 @@ class GameSirBridge:
         if action.lower().startswith("shortcut:"):
             if pressed:
                 sc_name = action.split(":", 1)[1].strip()
-                if sc_name:
-                    subprocess.Popen(["shortcuts", "run", sc_name])
+                _run_macos_shortcut(sc_name)
             return
         if action in ("mouse_left", "mouse_right"):
             btn = Button.left if action == "mouse_left" else Button.right
