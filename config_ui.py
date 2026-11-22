@@ -83,7 +83,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       </select>
       <select id="profileSelect" onchange="renderProfile()"></select>
       <select id="templateSelect" onchange="applyTemplate()">
-          <option value="">+ Preset Pronto...</option>
+          <option id="optTplDefault" value="">+ Preset Pronto...</option>
           <option value="pcsx2">PCSX2 (PS2)</option>
           <option value="dolphin">Dolphin (GC / Wii)</option>
           <option value="retroarch">RetroArch (SNES / GBA)</option>
@@ -442,6 +442,22 @@ async function load() {
   renderProfile();
 }
 
+function showToast(msg, isErr = false) {
+  let el = document.getElementById("gsToast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "gsToast";
+    el.style.cssText = "position:fixed;bottom:18px;right:18px;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.45);transition:opacity .25s;";
+    document.body.appendChild(el);
+  }
+  el.style.background = isErr ? "#dc2626" : "#0284c7";
+  el.style.color = "#fff";
+  el.style.opacity = "1";
+  el.textContent = msg;
+  clearTimeout(window._gsToastTimer);
+  window._gsToastTimer = setTimeout(() => { el.style.opacity = "0"; }, 3200);
+}
+
 function populateSelect() {
   const sel = document.getElementById("profileSelect");
   sel.innerHTML = "";
@@ -703,7 +719,7 @@ function importProfile(event) {
       renderProfile();
       showToast(t("toastImported"));
     } catch (err) {
-      alert("Invalid profile JSON");
+      showToast("Invalid profile JSON");
     }
   };
   reader.readAsText(file);
@@ -711,26 +727,33 @@ function importProfile(event) {
 }
 
 function createProfile() {
-  const newName = prompt(t("promptNew"));
-  if (!newName || !newName.trim()) return;
-  const clean = newName.trim();
-  if (cfg.profiles[clean]) return alert(t("errExists"));
-  const base = cfg.profiles[document.getElementById("profileSelect").value];
-  cfg.profiles[clean] = JSON.parse(JSON.stringify(base));
+  collectCurrentProfile();
+  let idx = Object.keys(cfg.profiles).length + 1;
+  let clean = "perfil_" + idx;
+  while (cfg.profiles[clean]) { idx++; clean = "perfil_" + idx; }
+  const base = cfg.profiles[cfg.active_profile]
+    ? JSON.parse(JSON.stringify(cfg.profiles[cfg.active_profile]))
+    : JSON.parse(JSON.stringify(PRESETS.desktop_media));
+  base.apps = [];
+  cfg.profiles[clean] = base;
   cfg.active_profile = clean;
   populateSelect();
   renderProfile();
+  showToast(`Perfil "${clean}" criado. Clique em Salvar Tudo para gravar.`);
 }
 
 function deleteProfile() {
   const keys = Object.keys(cfg.profiles);
-  if (keys.length <= 1) return alert(t("errMinOne"));
-  const name = document.getElementById("profileSelect").value;
-  if (!confirm(`${t("confirmDel")} "${name}"?`)) return;
-  delete cfg.profiles[name];
+  if (keys.length <= 1) {
+    showToast("Não é possível excluir o único perfil restante.", true);
+    return;
+  }
+  const cur = document.getElementById("profileSelect").value;
+  delete cfg.profiles[cur];
   cfg.active_profile = Object.keys(cfg.profiles)[0];
   populateSelect();
   renderProfile();
+  showToast(`Perfil "${cur}" removido. Clique em Salvar Tudo para confirmar.`);
 }
 
 async function saveConfig() {
@@ -799,6 +822,7 @@ class ConfigHandler(http.server.BaseHTTPRequestHandler):
         if parsed.path == "/":
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
             self.end_headers()
             self.wfile.write(HTML_TEMPLATE.encode("utf-8"))
         elif parsed.path == "/api/config":
