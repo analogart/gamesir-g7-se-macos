@@ -30,7 +30,7 @@ cat << INFO > "$APP_DIR/Contents/Info.plist"
     <key>CFBundleVersion</key>
     <string>5.0.0</string>
     <key>LSUIElement</key>
-    <true/>
+    <false/>
 </dict>
 </plist>
 INFO
