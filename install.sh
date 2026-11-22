@@ -32,7 +32,6 @@ cat << INFO > "$APP_DIR/Contents/Info.plist"
     <key>LSUIElement</key>
     <true/>
 </dict>
-</dict>
 </plist>
 INFO
 
@@ -78,7 +77,6 @@ cat << PLIST > "$PLIST_PATH"
             </dict>
         </dict>
     </dict>
-</dict>
 </plist>
 PLIST
 
