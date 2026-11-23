@@ -2,6 +2,12 @@
 
 Userspace USB GIP (Gaming Input Protocol) driver, key/mouse mapper, and native macOS HUD app for **GameSir G7 SE**, **GameSir G7**, **GameSir G7 HE**, and **GameSir T4 Kaleid** on Apple Silicon & Intel Macs.
 
+## Screenshots
+
+![GameSir Bridge v6.4.0 HUD](assets/hud-v6.4.0.png)
+
+![GameSir Bridge v6.4.0 3D Configurator](assets/configurator-3d-v6.4.0.png)
+
 ## What's New in v6.4.0
 - **Interactive 3D Controller Configurator:** Rotatable 3D model with camera angles (*Front*, *Rear (L4 / R4)*, *Top (LT / RT)*, *Spin*), base contact shadow, hover mapping tooltips, motor vibration test (*Testar Motores*), and analog centering (*Centralizar Analógicos*).
 - **Refined Native macOS HUD & Icon:** Translucent HUD cards, quick-toggle switches (*Launch at Login*, *Rumble Feedback*, *Auto-switch by app*), unified friendly profile names, multi-language support (EN / PT / ES), and updated `AppIcon.icns`.
