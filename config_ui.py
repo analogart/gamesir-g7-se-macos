@@ -148,6 +148,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <text x="208" y="166" class="pad-txt">▶</text>
 
       <circle id="svg-R3" cx="332" cy="162" r="30" class="stick-well"/>
+      <rect id="svg-L4" x="155" y="182" width="32" height="14" rx="6" class="pad-btn"/>
+      <text x="171" y="192" class="pad-txt">L4</text>
+      <rect id="svg-R4" x="333" y="182" width="32" height="14" rx="6" class="pad-btn"/>
+      <text x="349" y="192" class="pad-txt">R4</text>
+      <rect id="svg-L5" x="195" y="186" width="28" height="13" rx="6" class="pad-btn"/>
+      <text x="209" y="195" class="pad-txt">L5</text>
+      <rect id="svg-R5" x="297" y="186" width="28" height="13" rx="6" class="pad-btn"/>
+      <text x="311" y="195" class="pad-txt">R5</text>
       <circle id="dz-R" cx="332" cy="162" r="10" class="dz-ring"/>
       <circle id="dot-R" cx="332" cy="162" r="6" class="stick-dot"/>
 
@@ -377,7 +385,7 @@ let editLayer = "base";
 let activeBindTarget = null;
 let lastRaw = { lx: 0, ly: 0, rx: 0, ry: 0 };
 const MAIN_BTNS = ["A", "B", "X", "Y", "LB", "RB", "LT", "RT", "L3", "R3"];
-const DPAD_BTNS = ["UP", "DOWN", "LEFT", "RIGHT", "MENU", "VIEW", "SHARE"];
+const DPAD_BTNS = ["UP", "DOWN", "LEFT", "RIGHT", "MENU", "VIEW", "SHARE", "L4", "R4", "L5", "R5", "M"];
 const ALL_BTNS = [...MAIN_BTNS, ...DPAD_BTNS];
 const DIRS = ["up", "down", "left", "right"];
 

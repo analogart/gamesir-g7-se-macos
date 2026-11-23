@@ -1,4 +1,4 @@
-# GameSir Bridge for macOS (v6.1.0)
+# GameSir Bridge for macOS (v6.2.0)
 
 <p align="center">
   <img src="assets/hud-panel.png" alt="GameSir Bridge Native macOS HUD" width="290" />
@@ -7,7 +7,7 @@
 
 Userspace USB GIP (Gaming Input Protocol) driver, key/mouse mapper, and native macOS HUD app for **GameSir G7 SE**, **GameSir G7**, **GameSir G7 HE**, and **GameSir T4 Kaleid** on Apple Silicon & Intel Macs.
 
-## What's New in v6.1.0
+## What's New in v6.2.0
 - **Zero-Dependency Standalone `.app` Releases:** Download the pre-built `.zip` from Releases, drag `GameSir Bridge.app` to **Applications**, and run immediately — no Python or Homebrew required.
 - **Redesigned Native macOS HUD:** Grouped translucent cards (`NSVisualEffectView`), native SF Symbols, segmented language switcher, and quick-toggle switches for **Launch at Login** and **Rumble Feedback**.
 - **Universal macOS Architecture & Path Support:** Automatic `libusb` resolution across standalone bundles, Apple Silicon (`/opt/homebrew`), and Intel (`/usr/local`), with user profiles stored safely in `~/Library/Application Support/GameSir Bridge/`.
