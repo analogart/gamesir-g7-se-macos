@@ -17,10 +17,7 @@
     "chrome": "desktop_media",
     "finder": "desktop_media"
   },
-  "combos": {
-    "VIEW+MENU": "cmd+q",
-    "LB+RB": "cmd+shift+3"
-  },
+  "combos": {},
   "profiles": {
     "emulators": {
       "description": "PCSX2, Dolphin, OpenEmu, RetroArch",
