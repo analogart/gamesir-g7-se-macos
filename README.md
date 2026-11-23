@@ -4,10 +4,9 @@ Userspace USB GIP (Gaming Input Protocol) driver, key/mouse mapper, and native m
 
 ## Screenshots
 
-<p align="left">
-  <img src="assets/hud-v6.4.0.png" alt="GameSir Bridge v6.4.0 HUD" width="320" />
-  <img src="assets/configurator-3d-v6.4.0.png" alt="GameSir Bridge v6.4.0 3D Configurator" width="520" />
-</p>
+| Native HUD | 3D Configurator |
+| :---: | :---: |
+| <img src="assets/hud-v6.4.0.png" alt="GameSir Bridge v6.4.0 HUD" height="360" /> | <img src="assets/configurator-3d-v6.4.0.png" alt="GameSir Bridge v6.4.0 3D Configurator" height="360" /> |
 
 ## What's New in v6.4.0
 - **Interactive 3D Controller Configurator:** Rotatable 3D model with camera angles (*Front*, *Rear (L4 / R4)*, *Top (LT / RT)*, *Spin*), base contact shadow, hover mapping tooltips, motor vibration test (*Testar Motores*), and analog centering (*Centralizar Analógicos*).
