@@ -647,6 +647,14 @@ class GameSirBridge:
     def run_forever(self):
         self.running, last_check = True, 0.0
         while self.running:
+            rumble_req = pathlib.Path("/tmp/gamesir_rumble_test.json")
+            if rumble_req.exists():
+                try:
+                    rumble_req.unlink(missing_ok=True)
+                    self.rumble(75, 45)
+                except Exception:
+                    pass
+
             dev, ep_in = self._connect()
             if dev is None:
                 self.connected_name = self.connected_protocol = self.ep_out = None

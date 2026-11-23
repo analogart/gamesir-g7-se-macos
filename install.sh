@@ -47,9 +47,9 @@ cat << INFO > "$APP_DIR/Contents/Info.plist"
     <key>CFBundleName</key>
     <string>GameSir Bridge</string>
     <key>CFBundleShortVersionString</key>
-    <string>6.1.0</string>
+    <string>6.4.0</string>
     <key>CFBundleVersion</key>
-    <string>6.1.0</string>
+    <string>6.4.0</string>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSUIElement</key>
@@ -93,5 +93,5 @@ PLIST
 launchctl bootout "gui/$(id -u)" "$PLIST_PATH" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST_PATH"
 
-echo "Instalação concluída! Abrindo GameSir Bridge v6.1.0..."
+echo "Instalação concluída! Abrindo GameSir Bridge v6.4.0..."
 open -a "$APP_DIR"
