@@ -4,8 +4,8 @@ import shutil
 import sys
 
 APP_NAME = "GameSir Bridge"
-APP_VERSION = "v6.4.0"
-BUNDLE_VERSION = "6.4.0"
+APP_VERSION = "v7.0.0"
+BUNDLE_VERSION = "7.0.0"
 GITHUB_REPO = "analogart/gamesir-g7-se-macos"
 
 

@@ -445,7 +445,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <aside class="sidebar">
     <div class="brand">
       <span class="brand-title">GameSir Bridge</span>
-      <span class="version-pill">v6.4.0</span>
+      <span class="version-pill">v7.0.0</span>
     </div>
 
     <div>
@@ -1272,16 +1272,19 @@ function toggleAutoSpin() {
 }
 
 (function init3DController() {
+  try {
   const canvas = document.getElementById("pad3dCanvas");
   const wrap = document.getElementById("pad3dWrap");
   const hoverTag = document.getElementById("hoverTag");
   if (!canvas || !wrap || typeof THREE === "undefined") return;
+  const w = Math.max(320, wrap.clientWidth || 640);
+  const h = Math.max(240, wrap.clientHeight || 420);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(35, wrap.clientWidth / wrap.clientHeight, 0.1, 100);
+  const camera = new THREE.PerspectiveCamera(35, w / h, 0.1, 100);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+  renderer.setSize(w, h);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.06;
 
@@ -1695,6 +1698,9 @@ function toggleAutoSpin() {
     renderer.render(scene, camera);
   }
   animate();
+  } catch (err3d) {
+    console.error("3D init error:", err3d);
+  }
 })();
 
 async function pollLive() {
@@ -1755,16 +1761,19 @@ class ConfigHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(HTML_TEMPLATE.encode("utf-8"))
         elif parsed.path == "/three.min.js":
-            base_dir = pathlib.Path(getattr(sys, "_MEIPASS", pathlib.Path(__file__).resolve().parent))
-            js_file = base_dir / "assets" / "three.min.js"
-            if not js_file.exists():
-                js_file = pathlib.Path(__file__).resolve().parent / "assets" / "three.min.js"
-            if js_file.exists():
+            candidates = [
+                pathlib.Path("/Users/arthur/gamesir-g7-se-macos/assets/three.min.js"),
+                pathlib.Path(__file__).resolve().parent / "assets" / "three.min.js",
+                pathlib.Path(__file__).resolve().parent.parent / "Resources" / "assets" / "three.min.js",
+            ]
+            found = next((c for c in candidates if c.is_file()), None)
+            if found:
+                data = found.read_bytes()
                 self.send_response(200)
                 self.send_header("Content-Type", "application/javascript; charset=utf-8")
-                self.send_header("Cache-Control", "max-age=86400")
+                self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
-                self.wfile.write(js_file.read_bytes())
+                self.wfile.write(data)
             else:
                 self.send_response(404)
                 self.end_headers()

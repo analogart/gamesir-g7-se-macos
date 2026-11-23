@@ -40,12 +40,12 @@ rm -rf build dist
 PLIST="dist/GameSir Bridge.app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :LSMinimumSystemVersion string 12.0" "$PLIST" 2>/dev/null || \
 /usr/libexec/PlistBuddy -c "Set :LSMinimumSystemVersion 12.0" "$PLIST"
-/usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string 6.4.0" "$PLIST" 2>/dev/null || \
-/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 6.4.0" "$PLIST"
-/usr/libexec/PlistBuddy -c "Add :CFBundleVersion string 6.4.0" "$PLIST" 2>/dev/null || \
-/usr/libexec/PlistBuddy -c "Set :CFBundleVersion 6.4.0" "$PLIST"
+/usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string 7.0.0" "$PLIST" 2>/dev/null || \
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 7.0.0" "$PLIST"
+/usr/libexec/PlistBuddy -c "Add :CFBundleVersion string 7.0.0" "$PLIST" 2>/dev/null || \
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion 7.0.0" "$PLIST"
 
 codesign --force --deep --sign - "dist/GameSir Bridge.app"
-ditto -c -k --sequesterRsrc --keepParent "dist/GameSir Bridge.app" "dist/GameSir-Bridge-v6.4.0-macOS-${ARCH}.zip"
+ditto -c -k --sequesterRsrc --keepParent "dist/GameSir Bridge.app" "dist/GameSir-Bridge-v7.0.0-macOS-${ARCH}.zip"
 
-echo "Build standalone pronto em: dist/GameSir-Bridge-v6.4.0-macOS-${ARCH}.zip"
+echo "Build standalone pronto em: dist/GameSir-Bridge-v7.0.0-macOS-${ARCH}.zip"
